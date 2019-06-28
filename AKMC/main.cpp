@@ -45,20 +45,6 @@ class Atom{
         }
 };
 
-class FeAtom : public Atom{
-    private:
-        Eigen::Matrix3d S;
-    public:
-        FeAtom(){
-        }
-        void set_stress(double *SS)
-        {
-            S << SS[0], SS[3], SS[4],
-                 SS[3], SS[1], SS[5],
-                 SS[4], SS[5], SS[2];
-        }
-};
-
 class CAtom : public Atom{
     private:
         double * E;
@@ -105,16 +91,49 @@ class Octa : public Atom{
         }
 };
 
+class Energy{
+    private:
+        double a[7], b[5], dE0, c, sdash;
+    public:
+        Energy() : 
+        a{9.0e-12, 6.0e-12, 8.0e-12, 2.2e-11, 3.5e-11, 3.0e-12, 1.7e-11},
+        b{24.9e-7, 24.3e-7, 5.3e-7, 14.5e-7, 15.5e-7},
+	    dE0(0.8153), c(0.829), sdash(1.08e4)
+        {}
+
+        double calc_energy(double *sss)
+        {
+            double deltaE=0;
+	        deltaE =-a[0]*sss[0]*sss[0]+b[0]*sss[0];
+	        deltaE+= a[1]*sss[1]*sss[1]-b[1]*sss[1];
+	        deltaE+=-a[2]*sss[2]*sss[2]-b[2]*sss[2];
+	        deltaE+=dE0;
+	        if(sss[4]<-sdash)
+	        	deltaE+=-a[5]*sss[4]*sss[4]+b[4]*sss[4]+c-dE0;
+	        else if(sss[4]>sdash)
+	        	deltaE+=-a[5]*sss[4]*sss[4]-b[4]*sss[4]+c-dE0;
+	        else
+	        	deltaE+=-a[6]*sss[4]*sss[4];
+	        if(sss[5]<-sdash)
+	        	deltaE+=-a[3]*sss[5]*sss[5]+b[3]*sss[5]+c-dE0;
+	        else if(sss[5]>sdash)
+	        	deltaE+=-a[3]*sss[5]*sss[5]-b[3]*sss[5]+c-dE0;
+	        else
+	        	deltaE+=-a[4]*sss[5]*sss[5];
+	        return deltaE;
+        }
+};
+
 class AKMC{
     private:
-        FeAtom * Featom;
+        Octa * octa;
         CAtom * Catom;
         Eigen::Vector3d cell;
         double temperature, a_0;
-        int N_Fe, N_C;
+        int N_octa, N_C;
         Eigen::Matrix3d tmat;
     public:
-        AKMC(double dislocation_density, string input_file, double temperature_in, double box_height) : a_0(2.855312531)
+        AKMC(double dislocation_density, string input_file, double temperature_in, double box_height, double number_of_C_atoms) : a_0(2.855312531), N_octa(0)
         {
             cout<<"AKMC initialization"<<endl;
             tmat << 1.0/1.7320508, -1.0/1.4142135, 1.0/2.449489,
@@ -124,6 +143,20 @@ class AKMC{
             if (temperature<=0)
                 error_exit("ERROR: temperature must be a positive float");
             set_box(box_height, dislocation_density);
+            set_number_of_C_atoms(number_of_C_atoms);
+            read_octa(input_file);
+        }
+
+        void set_number_of_C_atoms(double nn)
+        {
+            if(nn<=0)
+                error_exit("ERROR: Illegal number of C atoms");
+            int N_Fe = int(2.0*cell.prod()/exp(3.0*log(a_0)));
+            if(nn<1)
+                nn = nn/(1.0-nn)*N_Fe;
+            if(nn>0.1*N_Fe)
+                cout<<"WARNING: Number of C atoms unrealistically high."<<endl;
+            N_C = int(nn);
         }
 
         double read_octa(string input_file)
@@ -132,113 +165,60 @@ class AKMC{
             eingabe.open(input_file, ios::in);
             if(!eingabe)
                 error_exit("ERROR: input file "+input_file+" does not exist or is empty");
-            double box_height=0;
-            for(int i=0; i<3; i++)
-                eingabe>>box_height;
-            if (box_height<=0)
-                error_exit("ERROR: problem with the box height: "+to_string(box_height));
             string line;
-            for(N_Fe=-1; getline(eingabe, line); N_Fe++);
-            cout<<"Number of Fe atoms: "<<N_Fe<<endl;
-            eingabe.close();
-            Featom = new FeAtom[N_Fe];
-            eingabe.open(input_file, ios::in);
-            for(int i=0; i<3; i++)
-                eingabe>>box_height;
-            double x[3], S[6];
-            for(int i=0; i<N_Fe && getline(eingabe, line); i++)
+            int n_in;
+            while(eingabe>>n_in)
             {
-                if (line.length()==0){
-                    i--;
-                    continue;
-                }
+                if (n_in>=N_octa)
+                    N_octa = n_in+1;
+                getline(eingabe, line);
+            }
+            cout<<"Number of octahedral interstitial sites: "<<N_octa<<endl;
+            eingabe.close();
+            octa = new Octa[N_octa];
+            eingabe.open(input_file, ios::in);
+            double x[3], S[6];
+            int id_NN, id_self;
+            for(int i=0; i<N_octa && getline(eingabe, line); i++)
+            {
                 stringstream ss(line);
+                ss>>id_self;
                 for(int j=0; j<3 && ss>>x[j]; j++);
+                ss>>id_NN;
                 for(int j=0; j<6 && ss>>S[j]; j++);
-                Featom[i].set_position(x);
-                Featom[i].set_stress(S);
-                Featom[i].set_cell(&cell);
+                if(id_self==id_NN)
+                    error_exit("ERROR: ID of neighbor is the ID of itself");
+                if(id_NN>=N_octa)
+                    error_exit("ERROR: neighbor ID larger than number of sites");
+                octa[id_self].set_position(x);
+                octa[id_self].set_neighbor(id_NN, S);
+                octa[id_self].set_cell(&cell);
             }
             eingabe.close();
-            cout<<"Fe configuration import: complete"<<endl;
-            return box_height;
+            cout<<"Octahedral interstitial site configuration import: complete"<<endl;
         }
 
         void set_box(double box_height, double dislocation_density)
         {
+            if(box_height<=0)
+                error_exit("ERROR: Problem with the box height");
             if(dislocation_density<=0)
                 error_exit("ERROR: Dislocation density has to be a positive float");
             cell<<1.0/sqrt(dislocation_density), 1.0/sqrt(dislocation_density), box_height;
             cout<<"Box size: "<<cell.prod()<<endl;
-        }
-
-        void detect_sites()
-        {
-            clock_t begin = clock();
-            int NN_ID[3], NNN_ID[3][4], count_site=0, shift_ID=10;
-            vector<int> count_NN, count_NNN, NN_ID_tot;
-            double dist;
-            Eigen::Vector3d v;
-            for(int i_Fe=0; i_Fe<N_Fe; i_Fe++)
-            {
-                count_NN.assign(3, 0); count_NNN.assign(3, 0);
-                for(int j_Fe=((i_Fe-shift_ID+N_Fe)%N_Fe); j_Fe!=((i_Fe-shift_ID+N_Fe-1)%N_Fe); j_Fe=(j_Fe+1)%N_Fe)
-                {
-                    if (i_Fe==j_Fe)
-                        continue;
-                    dist = (Featom[j_Fe]-Featom[i_Fe]).norm();
-                    if(dist>1.2*a_0)
-                        continue;
-                    for(int ix=0; ix<3; ix++)
-                    {
-                        if (count_NN.at(ix)==1 && count_NNN.at(ix)==4)
-                            continue;
-                        v << 0.5*a_0*(ix==0), 0.5*a_0*(ix==1), 0.5*a_0*(ix==2);
-                        v = tmat.transpose()*v;
-                        if(((Featom[j_Fe]-Featom[i_Fe])+v).norm()<0.97*a_0)
-                        {
-                            if (count_NN.at(ix)==0 && ((Featom[j_Fe]-Featom[i_Fe])+2.0*v).norm()<0.05*a_0)
-                            {
-                                NN_ID[ix] = j_Fe;
-                                count_NN.at(ix)++;
-                            }
-                            else
-                            {
-                                NNN_ID[ix][count_NNN.at(ix)] = j_Fe;
-                                count_NNN.at(ix)++;
-                            }
-                        }
-                    }
-                }
-                for(int ix=0; ix<3; ix++)
-                {
-                    if(count_NN.at(ix)!=1 || count_NNN.at(ix)!=4)
-                        continue;
-                    NN_ID_tot.push_back(i_Fe);
-                    NN_ID_tot.push_back(NN_ID[ix]);
-                    for(int count=0; count<4; count++)
-                        NN_ID_tot.push_back(NNN_ID[ix][count]);
-                    count_site++;
-                }
-                if ((double(clock() - begin) / CLOCKS_PER_SEC) > 10)
-                {
-                    cout<<double(i_Fe)/N_Fe*100.0<<" percent done; site count: "<<count_site<<endl;
-                    begin = clock();
-                }
-            }
-            cout<<"Number of sites: "<<count_site<<endl;
         }
 };
 
 int main(int arg, char **name){
 	cxxopts::Options options(name[0], "AKMC code");
 	int rand_seed=0, nsteps=10000000;
-	double temperature=300, dislocation_density=1.0e-6, box_height=27.9762;
+	double temperature=300, dislocation_density=1.0e-6, box_height=27.9762, number_of_C_atoms=1;
     string octa_config="octa.dat", output_file="akmc.log";
 	options.add_options()
 		("T, temperature", "Temperature K (default: 300 K)", cxxopts::value<double>(temperature))
 		("r, randseed", "Seed for random number (default: 0)", cxxopts::value<int>(rand_seed))
 		("d, density", "Dislocation density in A^2 (default: 10^-6)", cxxopts::value<double>(dislocation_density))
+		("n, number", "Number of C atoms or fraction if smaller than 1 (default: 1)", cxxopts::value<double>(number_of_C_atoms))
         ("o, output", "Output file name (default: akmc.log)", cxxopts::value<string>(output_file))
         ("i, input", "Input file name (default: octa.dta)", cxxopts::value<string>(octa_config))
         ("z, height", "Box height (default: 27.9762)", cxxopts::value<double>(box_height))
@@ -251,5 +231,5 @@ int main(int arg, char **name){
 		cout<<options.help({"", "Group"})<<endl;
 		exit(EXIT_FAILURE);
 	}
-    AKMC akmc = AKMC(dislocation_density, octa_config, temperature, box_height);
+    AKMC akmc = AKMC(dislocation_density, octa_config, temperature, box_height, number_of_C_atoms);
 }
