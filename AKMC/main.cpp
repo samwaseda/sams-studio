@@ -33,6 +33,14 @@ class Atom{
         {
             x = Eigen::Map<Eigen::Vector3d>(xx, 3);
         }
+        void set_position(Eigen::Vector3d xx)
+        {
+            x = xx;
+        }
+        Eigen::Vector3d get_position()
+        {
+            return x;
+        }
         Eigen::Vector3d operator-(const Atom& atom)
         {
             auto v = x.array()-atom.x.array();
@@ -42,15 +50,6 @@ class Atom{
         {
             auto v = 0.5*((*this)-atom).array()+atom.x.array();
             return (v-(*cell).array()*((v/(*cell).array()-0.5).cast<int>().cast<double>())).matrix();
-        }
-};
-
-class CAtom : public Atom{
-    private:
-        double * E;
-    public:
-        CAtom(){
-            E = new double [4];
         }
 };
 
@@ -68,10 +67,6 @@ class Octa : public Atom{
             id_NN = new int [4];
             x = new double[3];
         }
-        void set_position(double *xx){
-            for(int i=0; i<3; i++)
-                x[i] = xx[i];
-        }
         void set_neighbor(int id_in, double *S_in){
             if(count==4)
                 error_exit("ERROR: number of neighbors exceeding 4");
@@ -88,6 +83,30 @@ class Octa : public Atom{
             delete [] S;
             delete [] id_NN;
             delete [] x;
+        }
+};
+
+class CAtom : public Atom{
+    private:
+        double * E, * tau, tau_tot;
+        Octa * octa;
+        int id_octa;
+        int zone_id:
+    public:
+        CAtom(){
+            E = new double [4];
+            tau = new double [4];
+            tau_tot = 0;
+        }
+        void initialize(Octa * octa_in, int id_octa_in)
+        {
+            octa = octa_in;
+            update_id(id_octa_in);
+        }
+        void update_id(int id_octa_in)
+        {
+            id_octa = id_octa_in;
+            set_position(octa[id_octa].get_position());
         }
 };
 
@@ -129,9 +148,10 @@ class AKMC{
         Octa * octa;
         CAtom * Catom;
         Eigen::Vector3d cell;
-        double temperature, a_0;
+        double kBT, a_0;
         int N_octa, N_C;
         Eigen::Matrix3d tmat;
+        Energy energy;
     public:
         AKMC(double dislocation_density, string input_file, double temperature_in, double box_height, double number_of_C_atoms) : a_0(2.855312531), N_octa(0)
         {
@@ -139,12 +159,13 @@ class AKMC{
             tmat << 1.0/1.7320508, -1.0/1.4142135, 1.0/2.449489,
 		            1.0/1.7320508, 0, -2.0/2.449489,
 		            1.0/1.7320508, 1.0/1.4142135,  1.0/2.449489;
-            temperature = temperature_in;
-            if (temperature<=0)
+            kBT = 8.617e-5*temperature_in;
+            if (kBT<=0)
                 error_exit("ERROR: temperature must be a positive float");
             set_box(box_height, dislocation_density);
             set_number_of_C_atoms(number_of_C_atoms);
             read_octa(input_file);
+            initialize_C();
         }
 
         void set_number_of_C_atoms(double nn)
@@ -207,6 +228,20 @@ class AKMC{
             cell<<1.0/sqrt(dislocation_density), 1.0/sqrt(dislocation_density), box_height;
             cout<<"Box size: "<<cell.prod()<<endl;
         }
+
+        void initialize_C()
+        {
+            Catom = new CAtom[N_C];
+            for(int i_c=0; i_c<N_C; i_c++)
+                Catom[i_c].initialize(octa, rand()%N_octa);
+        }
+
+        void run(int number_of_steps=1)
+        {
+            for(int i_step=0; i_step<number_of_steps; i_step++)
+            {
+            }
+        }
 };
 
 int main(int arg, char **name){
@@ -216,12 +251,14 @@ int main(int arg, char **name){
     string octa_config="octa.dat", output_file="akmc.log";
 	options.add_options()
 		("T, temperature", "Temperature K (default: 300 K)", cxxopts::value<double>(temperature))
-		("r, randseed", "Seed for random number (default: 0)", cxxopts::value<int>(rand_seed))
+		("s, seed", "Seed for random number (default: 0)", cxxopts::value<int>(rand_seed))
 		("d, density", "Dislocation density in A^2 (default: 10^-6)", cxxopts::value<double>(dislocation_density))
 		("n, number", "Number of C atoms or fraction if smaller than 1 (default: 1)", cxxopts::value<double>(number_of_C_atoms))
         ("o, output", "Output file name (default: akmc.log)", cxxopts::value<string>(output_file))
-        ("i, input", "Input file name (default: octa.dta)", cxxopts::value<string>(octa_config))
+        ("i, input", "Input file name (default: octa.dat)", cxxopts::value<string>(octa_config))
         ("z, height", "Box height (default: 27.9762)", cxxopts::value<double>(box_height))
+        ("r, radius_core", "Radius of the core region in A (default: 10)", cxxopts::value<double>(r_core))
+        ("R, radius_kmc", "Radius of the KMC region in A (default: 120)", cxxopts::value<double>(r_kmc))
 		("h, help", "Print help")
 	;
 	auto results = options.parse(arg, name);
