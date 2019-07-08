@@ -1,0 +1,30 @@
+#include<iostream>
+#include<cmath>
+#include<cstdio>
+#define N_MAX 4
+
+class Node
+{
+    private:
+        double kappa_tot, *kappa;   // kappa : jump frequency (i.e. [vibration frequency]*exp(-dE/kBT))
+        int index, jump_ID;
+        bool selected;
+        Node *minor, *major, *parent;
+    public:
+    Node();
+    ~Node();
+        void set_kappa(double *, int index_in=-1, bool propagate_kappa=false);
+        void add_kappa(double);
+        void update_kappa();
+        double get_kappa();
+        void append_kappa(double *, int index_in=-1);
+        double kappa_sum(int n_max=N_MAX);
+        Node * create_node(double*, int index_in=-1, bool propagate_kappa=false);
+        void get_structure();
+        bool isleaf();
+        int get_index();
+        Node * choose_event(double);
+        Node* return_chosen_event(double);
+        void copy_node(Node *);
+};
+
