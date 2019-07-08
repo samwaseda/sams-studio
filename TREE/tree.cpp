@@ -23,14 +23,14 @@ Node :: Node() : kappa_tot(0), index(-1), selected(false){
 Node :: ~Node(){
     if(selected)
     {
-        add_kappa(-kappa_tot);
+        add_kappa(-kappa_tot); // remove kappa value from all parent nodes
         #ifndef NDEBUG
         cout<<index<<": deleted"<<endl;
         #endif
-        if(parent->major->selected)
-            parent->copy_node(parent->minor);
-        else if (parent->minor->selected)
-            parent->copy_node(parent->major);
+        if(parent->major->selected)             // not-to-be-deleted leaf/node is upbranched
+            parent->copy_node(parent->minor);   // to the parent node
+        else if (parent->minor->selected)       //
+            parent->copy_node(parent->major);   //
         delete major, delete minor;
     }
 }
@@ -89,9 +89,9 @@ double Node :: get_kappa()
 void Node :: append_kappa(double *kappa_in, int index_in)
 {
     if(kappa_tot==0 && isleaf())
-    {
-        set_kappa(kappa_in, index_in);
-    }
+    {                                   // This should be only relevant
+        set_kappa(kappa_in, index_in);  // for the very first assignment of kappa
+    }                                   // (maybe with assertion?)
     else
     {
         if(isleaf())
@@ -99,7 +99,7 @@ void Node :: append_kappa(double *kappa_in, int index_in)
             minor = create_node(kappa, index);
             major = create_node(kappa_in, index_in, true);
         }
-        else
+        else // if node, continue going farther towards a leaf
         {
             if(minor->get_kappa()<major->get_kappa())
                 minor->append_kappa(kappa_in, index_in);
@@ -117,7 +117,7 @@ Node * Node :: create_node(double *kappa_in, int index_in, bool propagate_kappa)
     return new_node;
 }
 
-void Node :: get_structure()
+void Node :: get_structure() // only relevant for debugging
 {
     if(isleaf())
     {
@@ -133,7 +133,7 @@ bool Node :: isleaf()
 {
     if (minor==NULL && major==NULL)
         return true;
-    else
+    else // only one of them can be NULL
         return false;
 }
 
@@ -161,7 +161,7 @@ Node* Node :: choose_event(double xi)
     {
         if (minor->isleaf())
             return minor->return_chosen_event(xi);
-        else
+        else // look farther until leaf is reached
             return minor->choose_event(xi);
     }
     else
@@ -173,7 +173,7 @@ Node* Node :: choose_event(double xi)
     }
 }
 
-void Node :: copy_node(Node *node_to_copy)
+void Node :: copy_node(Node *node_to_copy) // upbranching when one leaf is deleted
 {
     kappa = node_to_copy->kappa;
     index = node_to_copy->index;
