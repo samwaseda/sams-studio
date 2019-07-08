@@ -10,6 +10,7 @@
 #include <sstream>
 #include "cxxopts.hpp"
 #include "iofstream.cpp"
+#include "../TREE/tree.h"
 
 using namespace std;
 
