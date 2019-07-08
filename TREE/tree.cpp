@@ -155,7 +155,6 @@ Node* Node :: choose_event(double xi)
     assert(xi<get_kappa());
     if(isleaf())
         return return_chosen_event(xi);
-    //assert(abs(kappa_tot-minor->get_kappa()-major->get_kappa())<1.0e-4 && (to_string(kappa_tot)+"!="+to_string(minor->get_kappa())+"+"+to_string(minor->get_kappa())));
     assert(("Kappa value is not consistent", abs(kappa_tot-minor->get_kappa()-major->get_kappa())<1.0e-4));
         
     if(xi<minor->get_kappa())
