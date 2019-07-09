@@ -4,15 +4,9 @@
 #include<string>
 #include "tree.h"
 #include<assert.h>
-#define NDEBUG
+// #define NDEBUG
 
 using namespace std;
-
-void error_exit(string str)
-{
-	cout<<"ERROR: "<<str<<endl;
-	exit(EXIT_FAILURE);
-}
 
 Node :: Node() : kappa_tot(0), index(-1), selected(false){
     minor=NULL;     // minor and major are branches conventionally called left and right
@@ -27,10 +21,16 @@ Node :: ~Node(){
         #ifndef NDEBUG
         cout<<index<<": deleted"<<endl;
         #endif
-        if(parent->major->selected)             // not-to-be-deleted leaf/node is upbranched
-            parent->copy_node(parent->minor);   // to the parent node
-        else if (parent->minor->selected)       //
-            parent->copy_node(parent->major);   //
+        if(parent!=NULL)
+        {
+            if(parent->major->selected)             // not-to-be-deleted leaf/node is upbranched
+                parent->copy_node(parent->minor);   // to the parent node
+            else if (parent->minor->selected)       //
+                parent->copy_node(parent->major);   //
+        }
+        else
+            delete parent;
+        assert(("Leaves are not NULL", (major==NULL && minor==NULL)));
         delete major, delete minor;
     }
 }
@@ -150,12 +150,20 @@ Node* Node :: return_chosen_event(double xi)
     return this;
 }
 
+int Node :: get_jump_ID()
+{
+	return jump_ID;
+}
+
 Node* Node :: choose_event(double xi)
 {
+    if(parent==NULL)
+        xi *= get_kappa();
     assert(xi<get_kappa());
     if(isleaf())
         return return_chosen_event(xi);
     assert(("Kappa value is not consistent", abs(kappa_tot-minor->get_kappa()-major->get_kappa())<1.0e-4));
+    assert(("Leaves probably not properly updated", (!minor->selected && !major->selected)));
         
     if(xi<minor->get_kappa())
     {

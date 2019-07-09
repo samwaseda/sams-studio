@@ -1,6 +1,5 @@
 #include<iostream>
 #include<cmath>
-#include<cstdio>
 #define N_MAX 4
 
 class Node
@@ -26,5 +25,6 @@ class Node
         Node * choose_event(double);
         Node* return_chosen_event(double);
         void copy_node(Node *);
+        int get_jump_ID();
 };
 

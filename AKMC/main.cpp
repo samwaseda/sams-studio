@@ -11,12 +11,15 @@
 #include "cxxopts.hpp"
 #include "iofstream.cpp"
 #include "../TREE/tree.h"
+#include <cassert>
+
+#define NDEBUG
 
 using namespace std;
 
 void error_exit(string str)
 {
-	cout<<str<<endl;
+	cout<<"ERROR: "<<str<<endl;
 	exit(EXIT_FAILURE);
 }
 
@@ -69,10 +72,8 @@ class Octa : public Atom{
 			x = new double[3];
 		}
 		void set_neighbor(int id_in, double *S_in){
-			if(count==4)
-				error_exit("ERROR: number of neighbors exceeding 4");
-			if(id_in<0)
-				error_exit("ERROR: problem with the neighbor value");
+			assert(("number of neighbors exceeding 4", count<4));
+			assert(("problem with the neighbor value", id_in>=0));
 			id_NN[count] = id_in;
 			for(int i=0; i<6; i++)
 				S[count][i] = S_in[i];
@@ -113,12 +114,12 @@ class CAtom : public Atom{
 
 class Energy{
 	private:
-		double a[7], b[5], dE0, c, sdash;
+		double a[7], b[5], dE0, c, sdash, kBT, logtau;
 	public:
 		Energy() : 
 		a{9.0e-12, 6.0e-12, 8.0e-12, 2.2e-11, 3.5e-11, 3.0e-12, 1.7e-11},
 		b{24.9e-7, 24.3e-7, 5.3e-7, 14.5e-7, 15.5e-7},
-		dE0(0.8153), c(0.829), sdash(1.08e4)
+		dE0(0.8153), c(0.829), sdash(1.08e4), kBT(0), logtau(0)
 		{}
 
 		double calc_energy(double *sss)
@@ -142,6 +143,20 @@ class Energy{
 				deltaE+=-a[4]*sss[5]*sss[5];
 			return deltaE;
 		}
+
+        void set_temperature(double temperature, double tau=1.0e-13)
+        {
+            assert(("temperature must be a positive float", temperature>0));
+            assert(("tau must be a positive float", tau>0));
+            kBT = 8.617e-5*temperature;
+            logtau = log(tau);
+        }
+
+        double return_kappa(double *sss)
+        {
+            assert(("Temperature and tau have not been set", kBT>0 && logtau>0));
+            return exp(-calc_energy(sss)/kBT-logtau);
+        }
 };
 
 class AKMC{
@@ -149,10 +164,11 @@ class AKMC{
 		Octa * octa;
 		CAtom * Catom;
 		Eigen::Vector3d cell;
-		double kBT, a_0;
+		double a_0;
 		int N_octa, N_C;
 		Eigen::Matrix3d tmat;
 		Energy energy;
+        Node *head = new Node;
 	public:
 		AKMC(double dislocation_density, string input_file, double temperature_in, double box_height, double number_of_C_atoms) : a_0(2.855312531), N_octa(0)
 		{
@@ -160,9 +176,7 @@ class AKMC{
 			tmat << 1.0/1.7320508, -1.0/1.4142135, 1.0/2.449489,
 					1.0/1.7320508, 0, -2.0/2.449489,
 					1.0/1.7320508, 1.0/1.4142135,  1.0/2.449489;
-			kBT = 8.617e-5*temperature_in;
-			if (kBT<=0)
-				error_exit("ERROR: temperature must be a positive float");
+            energy.set_temperature(temperature_in);
 			set_box(box_height, dislocation_density);
 			set_number_of_C_atoms(number_of_C_atoms);
 			read_octa(input_file);
@@ -171,8 +185,7 @@ class AKMC{
 
 		void set_number_of_C_atoms(double nn)
 		{
-			if(nn<=0)
-				error_exit("ERROR: Illegal number of C atoms");
+			assert(("illegal number of C atoms", nn>0));
 			int N_Fe = int(2.0*cell.prod()/exp(3.0*log(a_0)));
 			if(nn<1)
 				nn = nn/(1.0-nn)*N_Fe;
@@ -186,7 +199,7 @@ class AKMC{
 			fstream eingabe;
 			eingabe.open(input_file, ios::in);
 			if(!eingabe)
-				error_exit("ERROR: input file "+input_file+" does not exist or is empty");
+				error_exit("input file "+input_file+" does not exist or is empty");
 			string line;
 			int n_in;
 			while(eingabe>>n_in)
@@ -208,10 +221,8 @@ class AKMC{
 				for(int j=0; j<3 && ss>>x[j]; j++);
 				ss>>id_NN;
 				for(int j=0; j<6 && ss>>S[j]; j++);
-				if(id_self==id_NN)
-					error_exit("ERROR: ID of neighbor is the ID of itself");
-				if(id_NN>=N_octa)
-					error_exit("ERROR: neighbor ID larger than number of sites");
+                assert(("ID of neighbor is the ID of itself", id_self!=id_NN));
+                assert(("neighbor ID larger than number of sites", id_NN<N_octa));
 				octa[id_self].set_position(x);
 				octa[id_self].set_neighbor(id_NN, S);
 				octa[id_self].set_cell(&cell);
@@ -222,10 +233,8 @@ class AKMC{
 
 		void set_box(double box_height, double dislocation_density)
 		{
-			if(box_height<=0)
-				error_exit("ERROR: Problem with the box height");
-			if(dislocation_density<=0)
-				error_exit("ERROR: Dislocation density has to be a positive float");
+            assert(("Problem with the box height", box_height>0));
+            assert(("Dislocation density has to be a positive float", dislocation_density>0));
 			cell<<1.0/sqrt(dislocation_density), 1.0/sqrt(dislocation_density), box_height;
 			cout<<"Box size: "<<cell.prod()<<endl;
 		}
@@ -267,7 +276,7 @@ int main(int arg, char **name){
 	if (results.count("help"))
 	{
 		cout<<options.help({"", "Group"})<<endl;
-		exit(EXIT_FAILURE);
+        return 0;
 	}
 	AKMC akmc = AKMC(dislocation_density, octa_config, temperature, box_height, number_of_C_atoms);
 }
