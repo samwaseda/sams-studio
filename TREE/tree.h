@@ -15,6 +15,7 @@ class Node
         void set_kappa(double *, int index_in=-1, bool propagate_kappa=false);
         void add_kappa(double);
         void update_kappa();
+        void remove();
         double get_kappa();
         void append_kappa(double *, int index_in=-1);
         double kappa_sum(int n_max=N_MAX);

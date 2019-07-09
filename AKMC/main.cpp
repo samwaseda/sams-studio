@@ -12,8 +12,9 @@
 #include "iofstream.cpp"
 #include "../TREE/tree.h"
 #include <cassert>
+#include <algorithm>
 
-#define NDEBUG
+// #define NDEBUG
 
 using namespace std;
 
@@ -21,6 +22,12 @@ void error_exit(string str)
 {
 	cout<<"ERROR: "<<str<<endl;
 	exit(EXIT_FAILURE);
+}
+
+void warning(bool condition, string message)
+{
+    if(condition)
+        cout<<"WARNING: "<<message<<endl;
 }
 
 class Atom{
@@ -62,6 +69,7 @@ class Octa : public Atom{
 		double ** S;
 		int * id_NN, count;
 		double * x;
+        Zone zone;
 	public:
 		Octa() : count(0)
 		{
@@ -90,15 +98,13 @@ class Octa : public Atom{
 
 class CAtom : public Atom{
 	private:
-		double * E, * tau, tau_tot;
+		double *kappa;
 		Octa * octa;
 		int id_octa;
 		int zone_id;
 	public:
 		CAtom(){
-			E = new double [4];
-			tau = new double [4];
-			tau_tot = 0;
+			kappa = new double [4];
 		}
 		void initialize(Octa * octa_in, int id_octa_in)
 		{
@@ -170,7 +176,9 @@ class AKMC{
 		Energy energy;
         Node *head = new Node;
 	public:
-		AKMC(double dislocation_density, string input_file, double temperature_in, double box_height, double number_of_C_atoms) : a_0(2.855312531), N_octa(0)
+		AKMC(double dislocation_density, string input_file, double temperature_in,
+             double box_height, double number_of_C_atoms, vector<double>core_position,
+             double r_core, double r_kmc) : a_0(2.855312531), N_octa(0)
 		{
 			cout<<"AKMC initialization"<<endl;
 			tmat << 1.0/1.7320508, -1.0/1.4142135, 1.0/2.449489,
@@ -179,7 +187,7 @@ class AKMC{
             energy.set_temperature(temperature_in);
 			set_box(box_height, dislocation_density);
 			set_number_of_C_atoms(number_of_C_atoms);
-			read_octa(input_file);
+			read_octa(input_file, core_position, r_core, r_kmc);
 			initialize_C();
 		}
 
@@ -189,13 +197,15 @@ class AKMC{
 			int N_Fe = int(2.0*cell.prod()/exp(3.0*log(a_0)));
 			if(nn<1)
 				nn = nn/(1.0-nn)*N_Fe;
-			if(nn>0.1*N_Fe)
-				cout<<"WARNING: Number of C atoms unrealistically high."<<endl;
+			warning(nn>0.1*N_Fe, "Number of C atoms unrealistically high.");
 			N_C = int(nn);
 		}
 
-		double read_octa(string input_file)
+		double read_octa(string input_file, vector<double> core_position, double r_core, double r_kmc)
 		{
+            assert(("core_position has to be x,y-coordinates", core_position.size()!=2));
+            warning(abs(core_position.at(0))+abs(core_position.at(1))!=0, "core_position shift not implemented");
+            assert(("r_core must be smaller than or equal to r_kmc", r_core<=r_kmc));
 			fstream eingabe;
 			eingabe.open(input_file, ios::in);
 			if(!eingabe)
@@ -222,7 +232,8 @@ class AKMC{
 				ss>>id_NN;
 				for(int j=0; j<6 && ss>>S[j]; j++);
                 assert(("ID of neighbor is the ID of itself", id_self!=id_NN));
-                assert(("neighbor ID larger than number of sites", id_NN<N_octa));
+                assert(("neighbor ID larger than number of sites", max(id_self, id_NN)<N_octa));
+                assert(("negative ID makes no sense", min(id_NN, id_self)>=0));
 				octa[id_self].set_position(x);
 				octa[id_self].set_neighbor(id_NN, S);
 				octa[id_self].set_cell(&cell);
@@ -258,6 +269,7 @@ int main(int arg, char **name){
 	cxxopts::Options options(name[0], "AKMC code");
 	int rand_seed=0, nsteps=10000000;
 	double temperature=300, dislocation_density=1.0e-6, box_height=27.9762, number_of_C_atoms=1, r_core=10, r_kmc=120;
+    vector<double> core_position (2, 0);
 	string octa_config="octa.dat", output_file="akmc.log";
 	options.add_options()
 		("T, temperature", "Temperature K (default: 300 K)", cxxopts::value<double>(temperature))
@@ -267,6 +279,7 @@ int main(int arg, char **name){
 		("o, output", "Output file name (default: akmc.log)", cxxopts::value<string>(output_file))
 		("i, input", "Input file name (default: octa.dat)", cxxopts::value<string>(octa_config))
 		("z, height", "Box height (default: 27.9762)", cxxopts::value<double>(box_height))
+        ("c, core", "Core position in x,y (default: 0, 0)", cxxopts::value<vector<double> >(core_position))
 		("r, radius_core", "Radius of the core region in A (default: 10)", cxxopts::value<double>(r_core))
 		("R, radius_kmc", "Radius of the KMC region in A (default: 120)", cxxopts::value<double>(r_kmc))
 		("h, help", "Print help")
@@ -278,5 +291,5 @@ int main(int arg, char **name){
 		cout<<options.help({"", "Group"})<<endl;
         return 0;
 	}
-	AKMC akmc = AKMC(dislocation_density, octa_config, temperature, box_height, number_of_C_atoms);
+	AKMC akmc = AKMC(dislocation_density, octa_config, temperature, box_height, number_of_C_atoms, core_position, r_core, r_kmc);
 }

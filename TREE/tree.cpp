@@ -18,9 +18,6 @@ Node :: ~Node(){
     if(selected)
     {
         add_kappa(-kappa_tot); // remove kappa value from all parent nodes
-        #ifndef NDEBUG
-        cout<<index<<": deleted"<<endl;
-        #endif
         if(parent!=NULL)
         {
             if(parent->major->selected)             // not-to-be-deleted leaf/node is upbranched
@@ -30,8 +27,18 @@ Node :: ~Node(){
         }
         else
             delete parent;
+        delete major, minor;
+    }
+}
+
+void Node :: remove()
+{
+    if(parent!=NULL)
+        delete this;
+    else
+    {
         assert(("Leaves are not NULL", (major==NULL && minor==NULL)));
-        delete major, delete minor;
+        kappa_tot = 0;
     }
 }
 

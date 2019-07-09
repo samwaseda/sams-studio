@@ -1,6 +1,16 @@
 #include<iostream>
 #include<cmath>
 #include "tree.h"
+#include<iomanip>
+
+/*
+
+This program checks the functionalities of tree.cpp
+by creating different numbers of atoms with their
+activation energy values (in this case 4 values as
+in the case of carbon diffusion inside bcc iron)
+
+*/
 
 using namespace std;
 
@@ -74,47 +84,77 @@ int main(int arg, char ** name){
     atom[0].displaced(0.81);
     head->append_kappa(atom[0].get_kappa(), 0);
     current_node = head->choose_event(0.1);
-    cout<<"Check 1: index"<<endl;
+    cout<<"Check 1: index";
     if(current_node->get_index()!=0)
         error_exit(to_string(current_node->get_index())+"!=0");
-    cout<<"Check 2: jump_ID chosen"<<endl;
+    cout<<": complete"<<endl;
+    cout<<"Check 2: jump_ID chosen";
     if(current_node->get_jump_ID()!=0)
         error_exit(to_string(current_node->get_jump_ID())+"!=0");
     current_node->update_kappa();
-    cout<<"Check 3: another jump_ID"<<endl;
+    cout<<": complete"<<endl;
+    cout<<"Check 3: another jump_ID";
     current_node = head->choose_event(0.99);
     if(current_node->get_jump_ID()!=3)
         error_exit(to_string(current_node->get_jump_ID())+"!=3");
-    cout<<"Check 4: total kappa"<<endl;
+    cout<<": complete"<<endl;
+    cout<<"Check 4: total kappa";
     if(abs(head->get_kappa()-4*exp(-0.81/kBT-logtau))>1.0e-4)
         error_exit(to_string(head->get_kappa())+"!="+to_string(4*exp(-0.81/kBT-logtau)));
-    cout<<"Check 5: deletion of current node"<<endl;
-    delete current_node, head;
+    cout<<": complete"<<endl;
+    cout<<"Check 5: deletion of current node";
+    current_node->remove();
+    cout<<": complete"<<endl;
+    cout<<"Check 6: kappa of empty tree";
+    if(head->get_kappa()!=0)
+        error_exit("kappa of empty tree not zero: "+to_string(head->get_kappa()));
+    delete head;
+    cout<<": complete"<<endl;
 
     cout<<"Routine 2: Two atoms with different activation energy values"<<endl;
     head = new Node;
     head->append_kappa(atom[0].get_kappa(), 0);
     atom[1].displaced(0.79);
     head->append_kappa(atom[1].get_kappa(), 1);
-    cout<<"Check 1: index"<<endl;
+    cout<<"Check 1: index";
     current_node = head->choose_event(0.5);
     if(current_node->get_index()!=1)
         error_exit(to_string(current_node->get_index())+"!=1");
-    cout<<"Check 2: total kappa"<<endl;
+    cout<<": complete"<<endl;
+    cout<<"Check 2: total kappa";
     if(abs(head->get_kappa()-4*exp(-0.81/kBT-logtau)-4*exp(-0.79/kBT-logtau))>1.0e-4)
         error_exit(to_string(head->get_kappa())+"!="+to_string(4*exp(-0.81/kBT-logtau)+4*exp(-0.79/kBT-logtau)));
+    cout<<": complete"<<endl;
     cout<<"Check 3: deletion of current node"<<endl;
-    delete current_node;
-    cout<<"Check 4: appending of new branch"<<endl;
+    current_node->remove();
+    cout<<": complete"<<endl;
+    cout<<"Check 4: appending of new branch";
     head->append_kappa(atom[1].get_kappa(), 1);
-    cout<<"Check 5: index"<<endl;
+    cout<<": complete"<<endl;
+    cout<<"Check 5: index";
     current_node = head->choose_event(0.5);
     if(current_node->get_index()!=1)
         error_exit(to_string(current_node->get_index())+"!=1");
-    cout<<"Check 6: total kappa"<<endl;
+    cout<<": complete"<<endl;
+    cout<<"Check 6: jump_ID";
+    double current_xi = 0.5*head->get_kappa();
+    current_xi -= 4*exp(-0.81/kBT-logtau);
+    for(int i=0; i<4; i++)
+    {
+    	current_xi -= exp(-0.79/kBT-logtau);
+	    if(current_xi<0)
+	    {
+            if(current_node->get_jump_ID()!=i)
+                error_exit("jump ID not correct: "+to_string(current_node->get_jump_ID())+" != "+to_string(i));
+            break;
+	    }
+    }
+    cout<<": complete"<<endl;
+    cout<<"Check 7: total kappa";
     if(abs(head->get_kappa()-4*exp(-0.81/kBT-logtau)-4*exp(-0.79/kBT-logtau))>1.0e-4)
         error_exit(to_string(head->get_kappa())+"!="+to_string(4*exp(-0.81/kBT-logtau)+4*exp(-0.79/kBT-logtau)));
     delete head;
+    cout<<": complete"<<endl;
     head = new Node;
     cout<<n_atoms<<" "<<n_loop<<" "<<endl;
     clock_t begin = clock();
@@ -124,16 +164,19 @@ int main(int arg, char ** name){
     double KMC_time = 0;
     for(int i=0; i<n_loop; i++)
     {
-        cout<<"Cycle: "<<i<<" Total kappa: "<<head->get_kappa()<<" Total KMC time: "<<KMC_time<<endl;
+        cout<<"Cycle: "<<i<<" kappa_tot: "<<setw(7)<<head->get_kappa()<<" KMC_t_tot: "<<setw(10)<<KMC_time;
         //head->get_structure();
         double random_number = rand()/(double)RAND_MAX;
         current_node = head->choose_event(random_number);
-        //cout<<"Selected: "<<current_node->get_index()<<" "<<random_number<<endl;
+        cout<<" Selected: "<<current_node->get_index()<<" "<<current_node->get_jump_ID()<<" xi: "<<setw(10)<<random_number<<" kappa: ";
+        for(int j=0; j<4; j++)
+            cout<<" "<<setw(10)<<atom[current_node->get_index()].get_kappa()[j];
+        cout<<endl;
         atom[current_node->get_index()].displaced();
         if(i%10==3)
         {
             deleted_index = current_node->get_index();
-            delete current_node;
+            current_node->remove();
         }
         else
             current_node->update_kappa();
