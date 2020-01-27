@@ -19,9 +19,6 @@ Atom::Atom() : n_max(0), n_neigh(0), A(0), B(0), E_uptodate(false), acc(0), coun
 	x = new float[3];
 	m = new double[3];
 	m_old = new double[3];
-	//mabs = 2.0+0.5*zufall();
-	//phi = M_PI*zufall();
-	//theta = acos(0.99);
 	mabs = 1;
 	phi = 0;
 	theta = 0;
@@ -333,6 +330,7 @@ Shell::Shell(int shell_max_in, string bravais) : shell_max(shell_max_in+1){
 		}
 	}
 }
+
 int Shell::get_shell(bool saddle, float distance)
 {
 	if(distance>5.1)
@@ -357,6 +355,7 @@ Shell::~Shell(){
 }
 
 average_energy::average_energy(): kappa(1.0-1.0e-3){ reset();}
+
 void average_energy::add(double E_in, bool total_energy=false)
 {
 	if (total_energy)
@@ -368,12 +367,14 @@ void average_energy::add(double E_in, bool total_energy=false)
 	EE = E_sum+EE*kappa;
 	NN += 1;
 }
+
 double average_energy::E(){
 	if(NN>0)
 		return EE*(1-kappa)/(1-exp(log(kappa)*NN));
 	else
 		return 0;
 }
+
 void average_energy::reset()
 {
 	EE = 0;
@@ -381,27 +382,14 @@ void average_energy::reset()
 	E_sum = 0;
 }
 
-Energy::Energy(string input_file, string bravais, int N_in, float N_Mn_in, int N_s, int N_v, double lambda_in, int num_neighbors, bool debug_mode_in): acc(0), MC_count(0), kB(8.6173305e-5), N_rep(N_in), lambda(lambda_in)
+Structure::Structure(string input_file, string bravais, int N_in, int num_neighbors, bool debug_mode_in) : N_v(0), N_s(0)
 {
-	cout<<"Starting initialization"<<endl;
-	ausgabe.open("MC.log", ios::out);
-	ausgabe<<"# Starting a Metropolis Monte Carlo simulation"<<endl;
-
 	if(bravais!="bcc" && bravais!="fcc")
 	{
 		cout<<"Bravais lattice not recognized"<<endl;
 		exit(EXIT_FAILURE);
 	}
-	else if(N_v+N_s>1){
-		cout<<"Currently more than one vacancy/saddle point is not permitted"<<endl;
-		ausgabe<<"Currently more than one vacancy/saddle point is not permitted"<<endl;
-		exit(EXIT_FAILURE);
-	}
-
-	debug_mode = debug_mode_in;
-	if(debug_mode)
-		ausgabe<<"## Debug mode activated"<<endl;
-
+	N_rep = N_in;
 	fstream restart;
 	restart.open("config.dat", ios::in);
 	if(restart)
@@ -420,28 +408,28 @@ Energy::Energy(string input_file, string bravais, int N_in, float N_Mn_in, int N
 			N_rep = round(exp(log(0.25*double(N_rep))/3.0));
 	}
 
-	N_tot = N_rep*N_rep*N_rep*2-N_s-N_v;
+	N_tot = N_rep*N_rep*N_rep*2;
 	if(bravais=="fcc")
 		N_tot += N_rep*N_rep*N_rep*2;
 
-	int N_Mn = 0;
-	if(N_Mn_in != 0)
-	{
-		if(N_Mn_in < 1)
-			N_Mn = int(N_Mn_in*N_tot);
-		else
-			N_Mn = int(N_Mn_in);
-	}
-	atom = new Atom[N_tot];
+	Atom* atom = new Atom[N_tot];
 	for(int ind=0; ind<N_tot; ind++)
 		atom[ind].set_num_neighbors(num_neighbors);
-	Coeff cff = Coeff(input_file, ausgabe);
-	shell_max = cff.shell();
-
 	if(restart)
 		reload_lattice(atom, "config.dat");
 	else
-		create_lattice(atom, bravais, N_s, N_Mn);
+		create_lattice(atom, bravais);
+}
+
+Atom* get_structure()
+{
+	return atom;
+}
+
+void Structure::set_coeff(string input_file, int num_neighbors, bool debug_mode)
+{
+	Coeff cff = Coeff(input_file, ausgabe);
+	shell_max = cff.shell();
 
 	ausgabe<<"## Number of shells: "<<shell_max<<" = "<<cff.shell()<<endl;
 
@@ -506,21 +494,7 @@ Energy::Energy(string input_file, string bravais, int N_in, float N_Mn_in, int N
 			}
 		}
 	}
-	double EE = 0, E = 0, E_max, E_min, E_harm = 0;
-	for(int i=0; i<N_tot; i++)
-	{
-		E += atom[i].E(true);
-		EE += square(atom[i].E());
-		E_harm += atom[i].E_harmonic();
-		if(i==0 || E_max<atom[i].E())
-			E_max = atom[i].E();
-		if(i==0 || E_min>atom[i].E())
-			E_min = atom[i].E();
-	}
-	E_tot.add(E-E_harm, true);
-	ausgabe<<"# Initial total energy: "<<E<<" per atom: "<<E/N_tot<<"+-"<<sqrt(EE*N_tot-square(E))/(double)N_tot<<" Emax: "<<E_max<<" Emin: "<<E_min<<endl;
-	if(E/N_tot<-1)
-		cout<<"WARNING: Energy per atom "<<E/N_tot<<endl;
+
 	ausgabe<<"## Shell count statistics:"<<endl<<"##";
 	for(int i=0; i<cff.shell(); i++)
 		ausgabe<<" "<<count_shell.at(i);
@@ -545,10 +519,56 @@ Energy::Energy(string input_file, string bravais, int N_in, float N_Mn_in, int N
 	ausgabe<<"# Number of vacancies: "<<N_v<<endl;
 	ausgabe<<"# Number of saddle point atoms: "<<N_s<<endl;
 	ausgabe<<"# Number or fraction of Mn atoms: "<<N_Mn<<endl;
-	begin = clock();
 }
 
-void Energy::create_lattice(Atom *atom, string bravais, int N_s=0, int N_Mn=0)
+void Structure::set_solute(double N_Mn_in)
+{
+	int N_Mn = 0;
+	if(N_Mn_in != 0)
+	{
+		if(N_Mn_in < 1)
+			N_Mn = int(N_Mn_in*N_tot);
+		else
+			N_Mn = int(N_Mn_in);
+	}
+	for(int i_Mn=0; i_Mn<N_Mn; i_Mn++)
+	{
+		int ID_rand = rand()%N_tot;
+		if(!atom[ID_rand].set_type("Mn"))
+			i_Mn--;
+		else
+			cout<<"Mn atom ID: "<<ID_rand<<" position: "<<atom[ID_rand].x[0]<<" "<<atom[ID_rand].x[1]<<" "<<atom[ID_rand].x[2]<<endl;
+	}
+}
+
+void Structure::add_vacancy()
+{
+	if (N_s>0 || N_v>0)
+	{
+		cout<<"Only one saddle or one vacancy is permitted"<<endl;
+		abort();
+	}
+	N_tot--;
+	N_v++;
+}
+
+void Structure::add_saddle()
+{
+	if (N_s>0 || N_v>0)
+	{
+		cout<<"Only one saddle or one vacancy is permitted"<<endl;
+		abort();
+	}
+	N_tot--;
+	N_s++;
+	for(int ix=0; ix<2; ix++)
+		atom[N_tot-1].x[ix] += 0.25;
+	if(bravais=="bcc")
+		atom[N_tot-1].x[2] += 0.25;
+	atom[N_tot-1].set_type("Fes");
+}
+
+void Structure::create_lattice(Atom *atom, string bravais, int N_s=0, int N_Mn=0)
 {
 	int count = 0;
 	for(int ix=0; ix<N_rep; ix++)
@@ -583,31 +603,9 @@ void Energy::create_lattice(Atom *atom, string bravais, int N_s=0, int N_Mn=0)
 		cout<<"ERROR: number of atoms not correct"<<endl;
 		abort();
 	}
-	if(N_s!=0)
-	{
-		if(bravais=="fcc")
-		{
-			for(int ix=0; ix<2; ix++)
-				atom[N_tot-1].x[ix] += 0.25;
-		}
-		else if(bravais=="bcc")
-		{
-			for(int ix=0; ix<3; ix++)
-				atom[N_tot-1].x[ix] += 0.25;
-		}
-		atom[N_tot-1].set_type("Fes");
-	}
-	for(int i_Mn=0; i_Mn<N_Mn; i_Mn++)
-	{
-		int ID_rand = rand()%N_tot;
-		if(!atom[ID_rand].set_type("Mn"))
-			i_Mn--;
-		else
-			cout<<"Mn atom ID: "<<ID_rand<<" position: "<<atom[ID_rand].x[0]<<" "<<atom[ID_rand].x[1]<<" "<<atom[ID_rand].x[2]<<endl;
-	}
 }
 
-void Energy::reload_lattice(Atom *atom, string restart_file="config.dat")
+void Structure::reload_lattice(Atom *atom, string restart_file="config.dat")
 {
 	int index;
 	fstream restart;
@@ -641,7 +639,7 @@ void Energy::reload_lattice(Atom *atom, string restart_file="config.dat")
 	restart.close();
 }
 
-bool Energy::check_vacancy(int index, string bravais, kdtree *tree, Shell *shell)
+bool Structure::check_vacancy(int index, string bravais, kdtree *tree, Shell *shell)
 {
 	if(atom[index].check_saddle())
 		return false;
@@ -652,7 +650,7 @@ bool Energy::check_vacancy(int index, string bravais, kdtree *tree, Shell *shell
 	return true;
 }
 
-void Energy::initialize_tree(kdtree *tree){
+void Structure::initialize_tree(kdtree *tree){
 	double cell[3], positions[N_tot*3];
 	for(int i=0; i<3; i++)
 		cell[i] = (double)N_rep;
@@ -663,11 +661,41 @@ void Energy::initialize_tree(kdtree *tree){
 	tree->set_positions(&positions[0], N_tot, 1.75);
 }
 
-float Energy::dist(Atom *xx, Atom *yy){
+float Structure::dist(Atom *xx, Atom *yy){
 	float dist_tot = 0;
 	for(int ix=0; ix<3; ix++)
 		dist_tot += square(xx->x[ix]-yy->x[ix]-N_rep*round((xx->x[ix]-yy->x[ix])/N_rep));
 	return sqrt(dist_tot);
+}
+
+
+//Energy::Energy(string input_file, string bravais, int N_in, float N_Mn_in, int N_s, int N_v, double lambda_in, int num_neighbors, bool debug_mode_in): acc(0), MC_count(0), kB(8.6173305e-5), N_rep(N_in), lambda(lambda_in)
+Energy::Energy(Atom* atom, double lambda_in, bool debug_mode_in): acc(0), MC_count(0), kB(8.6173305e-5), lambda(lambda_in)
+{
+	cout<<"Starting initialization"<<endl;
+	ausgabe.open("MC.log", ios::out);
+	ausgabe<<"# Starting a Metropolis Monte Carlo simulation"<<endl;
+
+	debug_mode = debug_mode_in;
+	if(debug_mode)
+		ausgabe<<"## Debug mode activated"<<endl;
+
+	double EE = 0, E = 0, E_max, E_min, E_harm = 0;
+	for(int i=0; i<N_tot; i++)
+	{
+		E += atom[i].E(true);
+		EE += square(atom[i].E());
+		E_harm += atom[i].E_harmonic();
+		if(i==0 || E_max<atom[i].E())
+			E_max = atom[i].E();
+		if(i==0 || E_min>atom[i].E())
+			E_min = atom[i].E();
+	}
+	E_tot.add(E-E_harm, true);
+	ausgabe<<"# Initial total energy: "<<E<<" per atom: "<<E/N_tot<<"+-"<<sqrt(EE*N_tot-square(E))/(double)N_tot<<" Emax: "<<E_max<<" Emin: "<<E_min<<endl;
+	if(E/N_tot<-1)
+		cout<<"WARNING: Energy per atom "<<E/N_tot<<endl;
+	begin = clock();
 }
 
 double Energy::MC(double T_in){

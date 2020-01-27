@@ -12,7 +12,6 @@
 #include<ctime>
 #include<random>
 #include<vector>
-#include "cxxopts.hpp"
 #include "tree.cpp"
 #include<algorithm>
 
@@ -54,12 +53,34 @@ class Atom{
 		void propose_new_state();
 };
 
+class Shell{
+	private:
+		float *dist_sb, *dist_bb, *dist_tmp;
+		int shell_max;
+		string bravais;
+	public:
+		Shell(int, string);
+		int get_shell(bool, float);
+		~Shell();
+};
+
 class Structure{
 	private:
-		double **x, **m;
-		int length;
+		int N_tot, N_rep, shell_max, N_s, N_v;
+		string bravais;
+		Atom* atom;
 	public:
-		void create_structure();
+		Structure(string, int);
+		Atom* get_structure();
+		void create_lattice(Atom*, string, int, int);
+		void add_vacancy();
+		void add_saddle();
+		void set_coeff(string, int, bool);
+		void set_solute(double);
+		void reload_lattice(Atom*, string);
+		bool check_vacancy(int, string, kdtree*, Shell*);
+		void initialize_tree(kdtree*);
+		float dist(Atom*, Atom*);
 };
 
 class Coeff{
@@ -81,17 +102,6 @@ class Coeff{
 		int Def(string);
 };
 
-class Shell{
-	private:
-		float *dist_sb, *dist_bb, *dist_tmp;
-		int shell_max;
-		string bravais;
-	public:
-		Shell(int, string);
-		int get_shell(bool, float);
-		~Shell();
-};
-
 class average_energy
 {
 	private:
@@ -105,8 +115,8 @@ class average_energy
 
 class Energy{
 	private:
-		int acc, MC_count, N_tot, N_rep, shell_max;
-		clock_t begin = clock();
+		int acc, MC_count;
+		clock_t begin;
 		bool debug_mode;
 		double kB, lambda;
 		Atom *atom;
@@ -115,11 +125,6 @@ class Energy{
 		average_energy E_tot;
 	public:
 		Energy(string, string, int, float, int, int, double, int, bool);
-		void create_lattice(Atom*, string, int, int);
-		void reload_lattice(Atom*, string);
-		bool check_vacancy(int, string, kdtree*, Shell*);
-		void initialize_tree(kdtree*);
-		float dist(Atom*, Atom*);
 		double MC(double );
 		void E_min();
 		double output(string, bool);
