@@ -1,17 +1,4 @@
-#include<iostream>
-#include<fstream>
-#include<cmath>
-#include<cstdlib>
-#include<cstdio>
-#include<string>
-#include<iomanip>
-#include<unordered_map>
-#include<ctime>
-#include<random>
-#include<vector>
-#include "cxxopts.hpp"
-#include "tree.cpp"
-#include<algorithm>
+#include "MC.h"
 
 using namespace std;
 
