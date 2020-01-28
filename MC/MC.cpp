@@ -382,7 +382,7 @@ void average_energy::reset()
 	E_sum = 0;
 }
 
-Structure::Structure(string input_file, string bravais, int N_in, int num_neighbors, bool debug_mode_in) : N_v(0), N_s(0)
+Structure::Structure(string bravais, int N_in, bool debug_mode_in) : N_v(0), N_s(0)
 {
 	if(bravais!="bcc" && bravais!="fcc")
 	{
@@ -391,6 +391,7 @@ Structure::Structure(string input_file, string bravais, int N_in, int num_neighb
 	}
 	N_rep = N_in;
 	fstream restart;
+	ausgabe.open("structure.dat", ios::out);
 	restart.open("config.dat", ios::in);
 	if(restart)
 	{
@@ -413,21 +414,21 @@ Structure::Structure(string input_file, string bravais, int N_in, int num_neighb
 		N_tot += N_rep*N_rep*N_rep*2;
 
 	Atom* atom = new Atom[N_tot];
-	for(int ind=0; ind<N_tot; ind++)
-		atom[ind].set_num_neighbors(num_neighbors);
 	if(restart)
 		reload_lattice(atom, "config.dat");
 	else
 		create_lattice(atom, bravais);
 }
 
-Atom* get_structure()
+Atom* Structure::get_structure()
 {
 	return atom;
 }
 
 void Structure::set_coeff(string input_file, int num_neighbors, bool debug_mode)
 {
+	for(int ind=0; ind<N_tot; ind++)
+		atom[ind].set_num_neighbors(num_neighbors);
 	Coeff cff = Coeff(input_file, ausgabe);
 	shell_max = cff.shell();
 
@@ -516,9 +517,14 @@ void Structure::set_coeff(string input_file, int num_neighbors, bool debug_mode)
 	ausgabe<<"# Bravais lattice: "<<bravais<<endl;
 	ausgabe<<"# Number of lattices in each direction: "<<N_rep<<endl;
 	ausgabe<<"# Total number of atoms: "<<N_tot<<endl;
-	ausgabe<<"# Number of vacancies: "<<N_v<<endl;
-	ausgabe<<"# Number of saddle point atoms: "<<N_s<<endl;
-	ausgabe<<"# Number or fraction of Mn atoms: "<<N_Mn<<endl;
+	//ausgabe<<"# Number of vacancies: "<<N_v<<endl;
+	//ausgabe<<"# Number of saddle point atoms: "<<N_s<<endl;
+	//ausgabe<<"# Number or fraction of Mn atoms: "<<N_Mn<<endl;
+}
+
+int Structure::get_number()
+{
+	return N_tot;
 }
 
 void Structure::set_solute(double N_Mn_in)
@@ -568,7 +574,7 @@ void Structure::add_saddle()
 	atom[N_tot-1].set_type("Fes");
 }
 
-void Structure::create_lattice(Atom *atom, string bravais, int N_s=0, int N_Mn=0)
+void Structure::create_lattice(Atom *atom, string bravais)
 {
 	int count = 0;
 	for(int ix=0; ix<N_rep; ix++)
@@ -670,7 +676,7 @@ float Structure::dist(Atom *xx, Atom *yy){
 
 
 //Energy::Energy(string input_file, string bravais, int N_in, float N_Mn_in, int N_s, int N_v, double lambda_in, int num_neighbors, bool debug_mode_in): acc(0), MC_count(0), kB(8.6173305e-5), N_rep(N_in), lambda(lambda_in)
-Energy::Energy(Atom* atom, double lambda_in, bool debug_mode_in): acc(0), MC_count(0), kB(8.6173305e-5), lambda(lambda_in)
+Energy::Energy(Atom* atom, int n_tot, double lambda_in, bool debug_mode_in): acc(0), MC_count(0), kB(8.6173305e-5), lambda(lambda_in)
 {
 	cout<<"Starting initialization"<<endl;
 	ausgabe.open("MC.log", ios::out);
@@ -681,6 +687,7 @@ Energy::Energy(Atom* atom, double lambda_in, bool debug_mode_in): acc(0), MC_cou
 		ausgabe<<"## Debug mode activated"<<endl;
 
 	double EE = 0, E = 0, E_max, E_min, E_harm = 0;
+	N_tot = n_tot;
 	for(int i=0; i<N_tot; i++)
 	{
 		E += atom[i].E(true);

@@ -69,10 +69,12 @@ class Structure{
 		int N_tot, N_rep, shell_max, N_s, N_v;
 		string bravais;
 		Atom* atom;
+		fstream ausgabe;
 	public:
-		Structure(string, int);
+		Structure(string, int, bool);
 		Atom* get_structure();
-		void create_lattice(Atom*, string, int, int);
+		void create_lattice(Atom*, string);
+		int get_number();
 		void add_vacancy();
 		void add_saddle();
 		void set_coeff(string, int, bool);
@@ -115,7 +117,7 @@ class average_energy
 
 class Energy{
 	private:
-		int acc, MC_count;
+		int acc, MC_count, N_tot;
 		clock_t begin;
 		bool debug_mode;
 		double kB, lambda;
@@ -124,8 +126,8 @@ class Energy{
 		default_random_engine generator;
 		average_energy E_tot;
 	public:
-		Energy(string, string, int, float, int, int, double, int, bool);
-		double MC(double );
+		Energy(Atom*, int, double, bool);
+		double MC(double);
 		void E_min();
 		double output(string, bool);
 		void reset();
