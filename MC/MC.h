@@ -71,7 +71,7 @@ class Structure{
 		Atom* atom;
 		fstream ausgabe;
 	public:
-		Structure(string, int, bool);
+		Structure(string, int);
 		Atom* get_structure();
 		void create_lattice(Atom*, string);
 		int get_number();

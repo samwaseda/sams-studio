@@ -96,7 +96,7 @@ class kdtree{
                             }
                         }
             }
-            std::cout<<"Initialization finished; number of points: "<<positions.size()<<std::endl;
+            std::cout<<"Tree initialization finished; number of points: "<<positions.size()<<std::endl;
         }
 
         double get_dist_from_box(double *point){

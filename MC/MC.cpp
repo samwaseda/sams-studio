@@ -382,7 +382,7 @@ void average_energy::reset()
 	E_sum = 0;
 }
 
-Structure::Structure(string bravais, int N_in, bool debug_mode_in) : N_v(0), N_s(0)
+Structure::Structure(string bravais, int N_in) : N_v(0), N_s(0)
 {
 	if(bravais!="bcc" && bravais!="fcc")
 	{
@@ -413,7 +413,7 @@ Structure::Structure(string bravais, int N_in, bool debug_mode_in) : N_v(0), N_s
 	if(bravais=="fcc")
 		N_tot += N_rep*N_rep*N_rep*2;
 
-	Atom* atom = new Atom[N_tot];
+	atom = new Atom[N_tot];
 	if(restart)
 		reload_lattice(atom, "config.dat");
 	else
@@ -453,6 +453,11 @@ void Structure::set_coeff(string input_file, int num_neighbors, bool debug_mode)
 			if(check_vacancy(i, bravais, &tree, &shell))
 				count_vacancy++;
 		cout<<"Vacancy count: "<<count_vacancy<<endl;
+		int count_saddle = 0;
+		for(int i=0; i<N_tot; i++)
+			if(atom[i].check_saddle())
+				count_saddle++;
+		cout<<"Saddle count: "<<count_saddle<<endl;
 	}
 
 	for(int i=0; i<N_tot; i++)
@@ -474,7 +479,6 @@ void Structure::set_coeff(string input_file, int num_neighbors, bool debug_mode)
 		for(int j=0; j<tree.num_neighbors; j++)
 		{
 			int ind_nn = tree.get_index(i, j);
-			//int i_shell = shell.get_shell(atom[i].check_saddle()+atom[ind_nn].check_saddle(), dist(&(atom[i]), &(atom[ind_nn])));
 			int i_shell = shell.get_shell(atom[i].check_saddle()+atom[ind_nn].check_saddle(), tree.get_distance(i,j));
 			if(i_shell<0)
 				continue;
@@ -494,6 +498,21 @@ void Structure::set_coeff(string input_file, int num_neighbors, bool debug_mode)
 				J_modif_value.at(i_shell) += vv;
 			}
 		}
+	}
+
+	if(debug_mode)
+	{
+		fstream config_ausgabe;
+		config_ausgabe.open("config.dat", ios::out);
+		for(int i=0; i<N_tot; i++)
+		{
+			config_ausgabe<<i<<" "<<atom[i].get_type()<<" "<<atom[i].x[0]<<" "<<atom[i].x[1]<<" "<<atom[i].x[2]<<" "
+				<<atom[i].m[0]<<" "<<atom[i].m[1]<<" "<<atom[i].m[2];
+			for(int j=0; j<tree.num_neighbors; j++)
+				config_ausgabe<<" "<<tree.get_distance(i, j);
+			config_ausgabe<<endl;
+		}
+		config_ausgabe.close();
 	}
 
 	ausgabe<<"## Shell count statistics:"<<endl<<"##";
@@ -674,8 +693,6 @@ float Structure::dist(Atom *xx, Atom *yy){
 	return sqrt(dist_tot);
 }
 
-
-//Energy::Energy(string input_file, string bravais, int N_in, float N_Mn_in, int N_s, int N_v, double lambda_in, int num_neighbors, bool debug_mode_in): acc(0), MC_count(0), kB(8.6173305e-5), N_rep(N_in), lambda(lambda_in)
 Energy::Energy(Atom* atom, int n_tot, double lambda_in, bool debug_mode_in): acc(0), MC_count(0), kB(8.6173305e-5), lambda(lambda_in)
 {
 	cout<<"Starting initialization"<<endl;
@@ -789,7 +806,7 @@ double Energy::output(string custom_text="", bool config=false){
 	if(config)
 	{
 		config_ausgabe.open("config.dat", ios::out);
-		for(int i=0; config && i<N_tot; i++)
+		for(int i=0; i<N_tot; i++)
 			config_ausgabe<<i<<" "<<atom[i].get_type()<<" "<<atom[i].x[0]<<" "<<atom[i].x[1]<<" "<<atom[i].x[2]<<" "
 				<<atom[i].m[0]<<" "<<atom[i].m[1]<<" "<<atom[i].m[2]<<" "
 				<<atom[i].E()<<" "<<atom[i].acceptance_ratio()<<endl;
