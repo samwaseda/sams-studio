@@ -61,6 +61,7 @@ class Shell{
 	public:
 		Shell(int, string);
 		int get_shell(bool, float);
+		string string_shells();
 		~Shell();
 };
 

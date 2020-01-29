@@ -331,6 +331,17 @@ Shell::Shell(int shell_max_in, string bravais) : shell_max(shell_max_in+1){
 	}
 }
 
+string Shell::string_shells()
+{
+	string shell_return = "Bulk:";
+	for(int i=0; i<shell_max; i++)
+		shell_return += " "+to_string(dist_bb[i]);
+	shell_return += " Saddle:";
+	for(int i=0; i<shell_max; i++)
+		shell_return += " "+to_string(dist_sb[i]);
+	return shell_return;
+}
+
 int Shell::get_shell(bool saddle, float distance)
 {
 	if(distance>5.1)
@@ -382,7 +393,7 @@ void average_energy::reset()
 	E_sum = 0;
 }
 
-Structure::Structure(string bravais, int N_in) : N_v(0), N_s(0)
+Structure::Structure(string bravais_in, int N_in) : N_v(0), N_s(0), bravais(bravais_in)
 {
 	if(bravais!="bcc" && bravais!="fcc")
 	{
@@ -448,6 +459,7 @@ void Structure::set_coeff(string input_file, int num_neighbors, bool debug_mode)
 
 	if(debug_mode)
 	{
+		cout<<"Shell distances: "<<shell.string_shells()<<endl;
 		int count_vacancy = 0;
 		for(int i=0; i<N_tot; i++)
 			if(check_vacancy(i, bravais, &tree, &shell))
