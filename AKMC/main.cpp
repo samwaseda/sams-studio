@@ -30,6 +30,53 @@ void warning(bool condition, string message)
         cout<<"WARNING: "<<message<<endl;
 }
 
+class Energy{
+	private:
+		double a[7], b[5], dE0, c, sdash, kBT, logtau;
+	public:
+		Energy() : 
+		a{9.0e-12, 6.0e-12, 8.0e-12, 2.2e-11, 3.5e-11, 3.0e-12, 1.7e-11},
+		b{24.9e-7, 24.3e-7, 5.3e-7, 14.5e-7, 15.5e-7},
+		dE0(0.8153), c(0.829), sdash(1.08e4), kBT(0), logtau(0)
+		{}
+
+		double calc_energy(double *sss)
+		{
+			double deltaE=0;
+			deltaE =-a[0]*sss[0]*sss[0]+b[0]*sss[0];
+			deltaE+= a[1]*sss[1]*sss[1]-b[1]*sss[1];
+			deltaE+=-a[2]*sss[2]*sss[2]-b[2]*sss[2];
+			deltaE+=dE0;
+			if(sss[4]<-sdash)
+				deltaE+=-a[5]*sss[4]*sss[4]+b[4]*sss[4]+c-dE0;
+			else if(sss[4]>sdash)
+				deltaE+=-a[5]*sss[4]*sss[4]-b[4]*sss[4]+c-dE0;
+			else
+				deltaE+=-a[6]*sss[4]*sss[4];
+			if(sss[5]<-sdash)
+				deltaE+=-a[3]*sss[5]*sss[5]+b[3]*sss[5]+c-dE0;
+			else if(sss[5]>sdash)
+				deltaE+=-a[3]*sss[5]*sss[5]-b[3]*sss[5]+c-dE0;
+			else
+				deltaE+=-a[4]*sss[5]*sss[5];
+			return deltaE;
+		}
+
+        void set_temperature(double temperature, double tau=1.0e-13)
+        {
+            assert(("temperature must be a positive float", temperature>0));
+            assert(("tau must be a positive float", tau>0));
+            kBT = 8.617e-5*temperature;
+            logtau = log(tau);
+        }
+
+        double return_kappa(double *sss)
+        {
+            assert(("Temperature and tau have not been set", kBT>0 && logtau>0));
+            return exp(-calc_energy(sss)/kBT-logtau);
+        }
+}energy;
+
 class Atom{
 	protected:
 		Eigen::Vector3d x, *cell;
@@ -69,7 +116,6 @@ class Octa : public Atom{
 		double ** S;
 		int * id_NN, count;
 		double * x;
-        Zone zone;
 	public:
 		Octa() : count(0)
 		{
@@ -118,53 +164,6 @@ class CAtom : public Atom{
 		}
 };
 
-class Energy{
-	private:
-		double a[7], b[5], dE0, c, sdash, kBT, logtau;
-	public:
-		Energy() : 
-		a{9.0e-12, 6.0e-12, 8.0e-12, 2.2e-11, 3.5e-11, 3.0e-12, 1.7e-11},
-		b{24.9e-7, 24.3e-7, 5.3e-7, 14.5e-7, 15.5e-7},
-		dE0(0.8153), c(0.829), sdash(1.08e4), kBT(0), logtau(0)
-		{}
-
-		double calc_energy(double *sss)
-		{
-			double deltaE=0;
-			deltaE =-a[0]*sss[0]*sss[0]+b[0]*sss[0];
-			deltaE+= a[1]*sss[1]*sss[1]-b[1]*sss[1];
-			deltaE+=-a[2]*sss[2]*sss[2]-b[2]*sss[2];
-			deltaE+=dE0;
-			if(sss[4]<-sdash)
-				deltaE+=-a[5]*sss[4]*sss[4]+b[4]*sss[4]+c-dE0;
-			else if(sss[4]>sdash)
-				deltaE+=-a[5]*sss[4]*sss[4]-b[4]*sss[4]+c-dE0;
-			else
-				deltaE+=-a[6]*sss[4]*sss[4];
-			if(sss[5]<-sdash)
-				deltaE+=-a[3]*sss[5]*sss[5]+b[3]*sss[5]+c-dE0;
-			else if(sss[5]>sdash)
-				deltaE+=-a[3]*sss[5]*sss[5]-b[3]*sss[5]+c-dE0;
-			else
-				deltaE+=-a[4]*sss[5]*sss[5];
-			return deltaE;
-		}
-
-        void set_temperature(double temperature, double tau=1.0e-13)
-        {
-            assert(("temperature must be a positive float", temperature>0));
-            assert(("tau must be a positive float", tau>0));
-            kBT = 8.617e-5*temperature;
-            logtau = log(tau);
-        }
-
-        double return_kappa(double *sss)
-        {
-            assert(("Temperature and tau have not been set", kBT>0 && logtau>0));
-            return exp(-calc_energy(sss)/kBT-logtau);
-        }
-};
-
 class AKMC{
 	private:
 		Octa * octa;
@@ -173,7 +172,6 @@ class AKMC{
 		double a_0;
 		int N_octa, N_C;
 		Eigen::Matrix3d tmat;
-		Energy energy;
         Node *head = new Node;
 	public:
 		AKMC(double dislocation_density, string input_file, double temperature_in,
@@ -181,9 +179,9 @@ class AKMC{
              double r_core, double r_kmc) : a_0(2.855312531), N_octa(0)
 		{
 			cout<<"AKMC initialization"<<endl;
-			tmat << 1.0/1.7320508, -1.0/1.4142135, 1.0/2.449489,
-					1.0/1.7320508, 0, -2.0/2.449489,
-					1.0/1.7320508, 1.0/1.4142135,  1.0/2.449489;
+			tmat << 1.0/sqrt(3), -1.0/sqrt(2), 1.0/sqrt(6),
+					1.0/sqrt(3), 0, -2.0/sqrt(6),
+					1.0/sqrt(3), 1.0/sqrt(2),  1.0/sqrt(6);
             energy.set_temperature(temperature_in);
 			set_box(box_height, dislocation_density);
 			set_number_of_C_atoms(number_of_C_atoms);
