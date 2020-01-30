@@ -14,7 +14,7 @@ double quartic(double xxx){
     return square(xxx)*square(xxx);
 }
 
-Atom::Atom() : n_max(0), n_neigh(0), A(0), B(0), E_uptodate(false), acc(0), count(0), type("Fe"), N_spread(4), m_0(0)
+Atom::Atom() : A(0), B(0), m_0(0), n_neigh(0), n_max(0), acc(0), count(0), N_spread(4), type("Fe"), E_uptodate(false)
 {
     x = new float[3];
     m = new double[3];
@@ -215,7 +215,7 @@ void average_energy::reset()
     E_sum = 0;
 }
 
-Energy::Energy(double lambda_in=1, bool debug_mode_in=true): acc(0), MC_count(0), kB(8.6173305e-5), lambda(lambda_in)
+MC::MC(double lambda_in=1, bool debug_mode_in=true): acc(0), MC_count(0), kB(8.6173305e-5), lambda(lambda_in)
 {
     cout<<"Starting initialization"<<endl;
     lambda = lambda_in;
@@ -227,7 +227,7 @@ Energy::Energy(double lambda_in=1, bool debug_mode_in=true): acc(0), MC_count(0)
         ausgabe<<"## Debug mode activated"<<endl;
 }
 
-void Energy::create_atoms(int n_tot, int num_neigh, vector<double> A, vector<double> B)
+void MC::create_atoms(int n_tot, int num_neigh, vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
 {
     N_tot = n_tot;
     atom = new Atom[N_tot];
@@ -236,6 +236,8 @@ void Energy::create_atoms(int n_tot, int num_neigh, vector<double> A, vector<dou
         atom[i].set_num_neighbors(num_neigh);
         atom[i].set_AB(A[i], B[i]);
     }
+    for(int i=0; i<int(J.size()); i++)
+        atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i));
 
     double EE = 0, E = 0, E_max, E_min, E_harm = 0;
     for(int i=0; i<N_tot; i++)
@@ -251,11 +253,11 @@ void Energy::create_atoms(int n_tot, int num_neigh, vector<double> A, vector<dou
     E_tot.add(E-E_harm, true);
     ausgabe<<"# Initial total energy: "<<E<<" per atom: "<<E/N_tot<<"+-"<<sqrt(EE*N_tot-square(E))/(double)N_tot<<" Emax: "<<E_max<<" Emin: "<<E_min<<endl;
     if(E/N_tot<-1)
-        cout<<"WARNING: Energy per atom "<<E/N_tot<<endl;
+        cout<<"WARNING: MC per atom "<<E/N_tot<<endl;
     begin = clock();
 }
 
-double Energy::MC(double T_in){
+double MC::run(double T_in){
     double kBT = kB*T_in, dEE_tot = 0, dE, EE_tot=0;
     int ID_rand;
     for(int i=0; debug_mode && i<N_tot; i++)
@@ -295,7 +297,7 @@ double Energy::MC(double T_in){
     return dEE_tot;
 }
 
-double Energy::output(string custom_text="", bool config=false){
+double MC::output(string custom_text="", bool config=false){
     double m_ave[3], mm_ave[3], E=0, m_min=0, m_max=0, EE=0, E_min=0, E_max=0, m_tmp, E_harm=0;
     for(int i=0; i<3; i++)
     {
@@ -348,7 +350,7 @@ double Energy::output(string custom_text="", bool config=false){
     return E;
 }
 
-void Energy::E_min(){
+void MC::E_min(){
     cout<<"Starting to calculate the energy minimum"<<endl;
     //for(int i=0; i<N_tot; i++)
     //	m[i] = 2.2;
@@ -357,12 +359,12 @@ void Energy::E_min(){
     {
         dE = 0;
         for(int i=0; i<1000; i++)
-            dE += MC(0);
+            dE += run(0);
         output();
     } while(abs(dE)>1.0e-4);
 }
 
-void Energy::reset()
+void MC::reset()
 {
     acc = 0;
     MC_count = 0;

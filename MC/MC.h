@@ -63,7 +63,7 @@ class average_energy
         void reset();
 };
 
-class Energy{
+class MC{
     private:
         int acc, MC_count, N_tot;
         clock_t begin;
@@ -74,9 +74,9 @@ class Energy{
         default_random_engine generator;
         average_energy E_tot;
     public:
-        Energy(double, bool);
-        void create_atoms(int, int, vector<double>, vector<double>);
-        double MC(double);
+        MC(double, bool);
+        void create_atoms(int, int, vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
+        double run(double);
         void E_min();
         double output(string, bool);
         void reset();
