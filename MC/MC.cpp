@@ -14,7 +14,7 @@ double quartic(double xxx){
     return square(xxx)*square(xxx);
 }
 
-Atom::Atom() : A(0), B(0), m_0(0), n_neigh(0), n_max(0), acc(0), count(0), N_spread(4), type("Fe"), E_uptodate(false)
+Atom::Atom() : A(0), B(0), m_0(0), n_neigh(0), n_max(0), acc(0), count(0), E_uptodate(false), debug(false)
 {
     x = new float[3];
     m = new double[3];
@@ -35,20 +35,8 @@ void Atom::set_num_neighbors(int num_neighbors=96){
         J[i] = 0;
 }
 
-bool Atom::set_type(string type_in, bool restart=false){
-    E_uptodate = false;
-    if(type==type_in && !restart)
-        cout<<"New type the same as the old one"<<endl;
-    else
-    {
-        type = type_in;
-        return true;
-    }
-    return false;
-}
-
-string Atom::get_type(){
-    return type;
+void Atom::activate_debug(){
+    debug = true;
 }
 
 float Atom::acceptance_ratio(){
@@ -67,7 +55,8 @@ double Atom::E(bool force_compute=false){
                                 +m_n[i_atom][2]*m[2]);
     E_current *= 0.5;
     E_current += A*square(mabs)+B*quartic(mabs);
-    E_uptodate = true;
+    if(!debug)
+        E_uptodate = true;
     return E_current;
 }
 
@@ -116,18 +105,14 @@ void Atom::flip_z(){
     set_m(mabs, -theta, -phi);
 }
 
-int Atom::nx(int ix){
-    if(ix<0 || ix>3)
-        cout<<"ERROR: x[3]"<<endl;
-    return round(N_spread*x[ix]);
-}
-
 void Atom::modify_AB(double A_in, double B_in){
     E_uptodate = false;
     if(A==0 && B==0)
         cout<<"WARNING: A and B seem not to have been set"<<endl;
     A += A_in;
     B += B_in;
+    if(B<0)
+        cout<<"WARNING: Negative B value will make it diverge"<<endl;
 }
 
 void Atom::set_AB(double A_in, double B_in){
@@ -136,17 +121,13 @@ void Atom::set_AB(double A_in, double B_in){
         cout<<"WARNING: A and B have already been set"<<endl;
     if(A_in==0 || B_in==0)
         cout<<"WARNING: Setting A=0 or B=0"<<endl;
+    if(B_in<0)
+        cout<<"WARNING: Negative B value will make it diverge"<<endl;
     A = A_in;
     B = B_in;
     slope = 2.0*abs(A);
     if (A<0)
         m_0 = sqrt(-0.5*A/B);
-}
-
-bool Atom::check_saddle(){
-    if(nx(0)%2==1 || nx(1)%2==1 || nx(2)%2==1)
-        return true;
-    return false;
 }
 
 void Atom::set_neighbor(double* mm, double JJ){
@@ -187,7 +168,7 @@ void Atom::propose_new_state(){
     set_m(mabs_new, theta_new, phi_new);
 }
 
-average_energy::average_energy(): kappa(1.0-1.0e-3){ reset();}
+average_energy::average_energy(){ reset();}
 
 void average_energy::add(double E_in, bool total_energy=false)
 {
@@ -197,13 +178,13 @@ void average_energy::add(double E_in, bool total_energy=false)
         E_sum += E_in;
     else
         return;
-    EE = E_sum+EE*kappa;
+    EE = E_sum+EE;
     NN += 1;
 }
 
 double average_energy::E(){
     if(NN>0)
-        return EE*(1-kappa)/(1-exp(log(kappa)*NN));
+        return EE/(double)NN;
     else
         return 0;
 }
@@ -215,21 +196,33 @@ void average_energy::reset()
     E_sum = 0;
 }
 
-MC::MC(double lambda_in=1, bool debug_mode_in=true): acc(0), MC_count(0), kB(8.6173305e-5), lambda(lambda_in)
+MC::MC(): acc(0), MC_count(0), thermodynamic_integration(false), kB(8.6173305e-5)
 {
     cout<<"Starting initialization"<<endl;
-    lambda = lambda_in;
     ausgabe.open("MC.log", ios::out);
     ausgabe<<"# Starting a Metropolis Monte Carlo simulation"<<endl;
-
-    debug_mode = debug_mode_in;
-    if(debug_mode)
-        ausgabe<<"## Debug mode activated"<<endl;
 }
 
-void MC::create_atoms(int n_tot, int num_neigh, vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
+void MC::set_lambda(double lambda_in)
 {
-    N_tot = n_tot;
+    if(lambda<0 || lambda>1)
+        throw invalid_argument( "Lambda must be between 0 and 1" );
+    thermodynamic_integration = true;
+    lambda = lambda_in;
+}
+
+void MC::activate_debug()
+{
+    if(!debug_mode)
+        ausgabe<<"## Debug mode activated"<<endl;
+    debug_mode = true;
+}
+
+void MC::create_atoms(int num_neigh, vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
+{
+
+    N_tot = int(A.size());
+    ausgabe<<"# Creating "<<N_tot<<" atoms with "<<num_neigh<<" neighbors."<<endl;
     atom = new Atom[N_tot];
     for(int i=0; i<N_tot; i++)
     {
@@ -257,7 +250,7 @@ void MC::create_atoms(int n_tot, int num_neigh, vector<double> A, vector<double>
     begin = clock();
 }
 
-double MC::run(double T_in){
+double MC::run(double T_in, int number_of_iterations=1){
     double kBT = kB*T_in, dEE_tot = 0, dE, EE_tot=0;
     int ID_rand;
     for(int i=0; debug_mode && i<N_tot; i++)
@@ -267,7 +260,7 @@ double MC::run(double T_in){
         else
             EE_tot -= atom[i].E(true);
     }
-    for(int i=0; i<N_tot; i++)
+    for(int i=0; i<N_tot*number_of_iterations; i++)
     {
         MC_count++;
         ID_rand = rand()%N_tot;
@@ -297,7 +290,7 @@ double MC::run(double T_in){
     return dEE_tot;
 }
 
-double MC::output(string custom_text="", bool config=false){
+double MC::output(bool config=false){
     double m_ave[3], mm_ave[3], E=0, m_min=0, m_max=0, EE=0, E_min=0, E_max=0, m_tmp, E_harm=0;
     for(int i=0; i<3; i++)
     {
@@ -317,7 +310,8 @@ double MC::output(string custom_text="", bool config=false){
         if(m_max<m_tmp || i==0)
             m_max = m_tmp;
         E += atom[i].E(true);
-        E_harm += atom[i].E_harmonic();
+        if (thermodynamic_integration)
+            E_harm += atom[i].E_harmonic();
         EE += square(atom[i].E());
         if(E_min>atom[i].E() || i==0)
             E_min = atom[i].E();
@@ -325,9 +319,7 @@ double MC::output(string custom_text="", bool config=false){
             E_max = atom[i].E();
     }
     E_tot.add(E-E_harm, true);
-    if(custom_text.size()>0)
-        custom_text += " ";
-    ausgabe<<int((double)(clock()-begin)/CLOCKS_PER_SEC+0.5)<<" "<<custom_text
+    ausgabe<<int((double)(clock()-begin)/CLOCKS_PER_SEC+0.5)<<" "
         <<m_ave[0]/N_tot<<" "<<m_ave[1]/N_tot<<" "<<m_ave[2]/N_tot<<" "
         <<sqrt(mm_ave[0]*N_tot-m_ave[0]*m_ave[0])/N_tot<<" "<<sqrt(mm_ave[1]*N_tot-m_ave[1]*m_ave[1])/N_tot<<" "<<sqrt(mm_ave[2]*N_tot-m_ave[2]*m_ave[2])/N_tot<<" "
         <<(double)acc/(double)MC_count<<" "<<fixed<<setprecision(6)<<E<<" "<<fixed<<setprecision(6)<<E_harm<<" "<<fixed<<setprecision(6)<<E_tot.E()<<" "<<sqrt(EE*N_tot-E*E)/N_tot<<endl;
@@ -342,7 +334,7 @@ double MC::output(string custom_text="", bool config=false){
     {
         config_ausgabe.open("config.dat", ios::out);
         for(int i=0; i<N_tot; i++)
-            config_ausgabe<<i<<" "<<atom[i].get_type()<<" "<<atom[i].x[0]<<" "<<atom[i].x[1]<<" "<<atom[i].x[2]<<" "
+            config_ausgabe<<atom[i].x[0]<<" "<<atom[i].x[1]<<" "<<atom[i].x[2]<<" "
                 <<atom[i].m[0]<<" "<<atom[i].m[1]<<" "<<atom[i].m[2]<<" "
                 <<atom[i].E()<<" "<<atom[i].acceptance_ratio()<<endl;
         config_ausgabe.close();
