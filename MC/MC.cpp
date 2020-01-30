@@ -161,6 +161,10 @@ void Atom::set_neighbor(double* mm, double JJ){
 	n_neigh++;
 }
 
+int Atom::get_num_neighbors(){
+	return n_neigh;
+}
+
 bool Atom::modify_neighbor(double* mm, double JJ){
 	for (int i=0; i<n_neigh; i++)
 		if(m_n[i] == mm)
@@ -519,7 +523,7 @@ void Structure::set_coeff(string input_file, int num_neighbors, bool debug_mode)
 		for(int i=0; i<N_tot; i++)
 		{
 			config_ausgabe<<i<<" "<<atom[i].get_type()<<" "<<atom[i].x[0]<<" "<<atom[i].x[1]<<" "<<atom[i].x[2]<<" "
-				<<atom[i].m[0]<<" "<<atom[i].m[1]<<" "<<atom[i].m[2];
+				<<atom[i].m[0]<<" "<<atom[i].m[1]<<" "<<atom[i].m[2]<<" "<<atom[i].get_num_neighbors();
 			for(int j=0; j<tree.num_neighbors; j++)
 				config_ausgabe<<" "<<tree.get_distance(i, j);
 			config_ausgabe<<endl;

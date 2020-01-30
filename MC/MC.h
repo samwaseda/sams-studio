@@ -8,11 +8,9 @@
 #include<cstdio>
 #include<string>
 #include<iomanip>
-#include<unordered_map>
 #include<ctime>
 #include<random>
 #include<vector>
-#include "tree.cpp"
 #include<algorithm>
 
 using namespace std;
@@ -49,60 +47,9 @@ class Atom{
 		void set_AB(double, double);
 		bool check_saddle();
 		void set_neighbor(double*, double);
+		int get_num_neighbors();
 		bool modify_neighbor(double*, double);
 		void propose_new_state();
-};
-
-class Shell{
-	private:
-		float *dist_sb, *dist_bb, *dist_tmp;
-		int shell_max;
-		string bravais;
-	public:
-		Shell(int, string);
-		int get_shell(bool, float);
-		string string_shells();
-		~Shell();
-};
-
-class Structure{
-	private:
-		int N_tot, N_rep, shell_max, N_s, N_v;
-		string bravais;
-		Atom* atom;
-		fstream ausgabe;
-	public:
-		Structure(string, int);
-		Atom* get_structure();
-		void create_lattice(Atom*, string);
-		int get_number();
-		void add_vacancy();
-		void add_saddle();
-		void set_coeff(string, int, bool);
-		void set_solute(double);
-		void reload_lattice(Atom*, string);
-		bool check_vacancy(int, string, kdtree*, Shell*);
-		void initialize_tree(kdtree*);
-		float dist(Atom*, Atom*);
-};
-
-class Coeff{
-	private:
-		double ***JJ, **AA, **BB;
-		unordered_map<string, int> ID_type = {{"Fe", 0}, {"Mn", 1}, {"Fes", 2}};
-		unordered_map<string, int> defect_type = {{"b", 0}, {"v", 1}, {"s", 2}};
-		int shell_max;
-	public:
-		Coeff(string, fstream&);
-		void initialize_coeff();
-		double A(string, string);
-		double B(string, string);
-		double J(string, string, int, string, string);
-		int shell();
-		int Elmax();
-		int Defmax();
-		int El(string);
-		int Def(string);
 };
 
 class average_energy
