@@ -14,9 +14,10 @@ cdef class MC:
         num_neigh = J.shape[1]
         neigh = np.array(structure.neigh)
         me = np.arange(len(structure))[:, np.newaxis]*np.ones_like(neigh)
-        me = me[J!=None].flatten()
-        neigh = neigh[J!=None].flatten()
-        J = J[J!=None].flatten()
+        J = J.flatten()
+        me = me.flatten()[J!=None]
+        neigh = neigh.flatten()[J!=None]
+        J = J[J!=None]
         if len(A)!=len(structure) or len(B)!=len(structure):
             raise ValueError('Length of A or B is not the same as the structure length')
         if len(J)>len(structure)*num_neigh:
@@ -29,10 +30,18 @@ cdef class MC:
             raise AssertionError('Problem with the ids')
         self.c_mc.create_atoms(num_neigh, A, B, me, neigh, J)
 
-    def run(self, temperature, number_of_iterations=1):
-        self.c_mc.run(temperature, number_of_iterations)
+    def get_magnetic_moments(self):
+        m = self.c_mc.get_magnetic_moments()
+        return np.array(m).reshape(-1, 3)
 
-    def output(self, configuration=True, reset=True):
-        _ = self.c_mc.output(configuration)
+    def run(self, temperature, number_of_iterations=1, reset=True):
         if reset:
             self.c_mc.reset()
+        self.c_mc.run(temperature, number_of_iterations)
+
+    def get_acceptance_ratio(self):
+        return self.c_mc.get_acceptance_ratio()
+
+    def get_energy(self):
+        return self.c_mc.get_energy()
+

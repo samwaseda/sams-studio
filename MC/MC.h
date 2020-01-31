@@ -79,6 +79,9 @@ class MC{
         void E_min();
         double output(bool);
         void set_lambda(double);
+        vector<double> get_magnetic_moments();
+        double get_acceptance_ratio();
+        double get_energy();
         void reset();
 };
 

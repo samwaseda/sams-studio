@@ -172,13 +172,13 @@ average_energy::average_energy(){ reset();}
 
 void average_energy::add(double E_in, bool total_energy=false)
 {
+    if (E_in==0)
+        return;
     if (total_energy)
         E_sum = E_in;
-    else if (E_sum!=0)
-        E_sum += E_in;
     else
-        return;
-    EE = E_sum+EE;
+        E_sum += E_in;
+    EE += E_sum;
     NN += 1;
 }
 
@@ -253,40 +253,40 @@ void MC::create_atoms(int num_neigh, vector<double> A, vector<double> B, vector<
 double MC::run(double T_in, int number_of_iterations=1){
     double kBT = kB*T_in, dEE_tot = 0, dE, EE_tot=0;
     int ID_rand;
-    for(int i=0; debug_mode && i<N_tot; i++)
+    for(int i=0; i<N_tot; i++)
+        EE_tot += atom[i].E(true);
+    E_tot.add(EE_tot, true);
+    for(int iter=0; iter<number_of_iterations; iter++)
     {
-        if(lambda<1)
-            EE_tot -= atom[i].E(true)-atom[i].E_harmonic();
-        else
+        dEE_tot = 0, EE_tot = 0;
+        for(int i=0; debug_mode && i<N_tot; i++)
             EE_tot -= atom[i].E(true);
-    }
-    for(int i=0; i<N_tot*number_of_iterations; i++)
-    {
-        MC_count++;
-        ID_rand = rand()%N_tot;
-        atom[ID_rand].propose_new_state();
-        dE = atom[ID_rand].dE();
-        if(lambda<1)
-            dE = lambda*dE+(1.0-lambda)*atom[ID_rand].dE_harmonic();
-        if(dE<0 || (kBT>0)*exp(-dE/kBT)>rand()/(double)RAND_MAX)
-        {
-            acc++;
-            dEE_tot += atom[ID_rand].dE()-atom[ID_rand].dE_harmonic();
-        }
-        else
-            atom[ID_rand].revoke();
-    }
-    if(debug_mode)
-    {
         for(int i=0; i<N_tot; i++)
-            EE_tot += atom[i].E(true)-atom[i].E_harmonic();
-        if(abs(EE_tot-dEE_tot)>1.0e-6*N_tot)
         {
-            cout<<"ERROR: Problem with the energy difference: "<<EE_tot<<" "<<dEE_tot<<endl;
-            exit(EXIT_FAILURE);
+            MC_count++;
+            ID_rand = rand()%N_tot;
+            atom[ID_rand].propose_new_state();
+            dE = atom[ID_rand].dE();
+            if(dE<0 || (kBT>0)*exp(-dE/kBT)>rand()/(double)RAND_MAX)
+            {
+                acc++;
+                dEE_tot += dE;
+            }
+            else
+                atom[ID_rand].revoke();
         }
+        if(debug_mode)
+        {
+            for(int i=0; i<N_tot; i++)
+                EE_tot += atom[i].E(true);
+            if(abs(EE_tot-dEE_tot)>1.0e-6*N_tot)
+            {
+                cout<<"ERROR: Problem with the energy difference: "<<EE_tot<<" "<<dEE_tot<<endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+        E_tot.add(dEE_tot);
     }
-    E_tot.add(dEE_tot);
     return dEE_tot;
 }
 
@@ -342,6 +342,15 @@ double MC::output(bool config=false){
     return E;
 }
 
+vector<double> MC::get_magnetic_moments(){
+    vector<double> m;
+    m.resize(N_tot*3);
+    for(int i_atom=0; i_atom<N_tot; i_atom++)
+        for(int ix=0; ix<3; ix++)
+            m.at(i_atom*3+ix) = atom[i_atom].m[ix];
+    return m;
+}
+
 void MC::E_min(){
     cout<<"Starting to calculate the energy minimum"<<endl;
     //for(int i=0; i<N_tot; i++)
@@ -354,6 +363,16 @@ void MC::E_min(){
             dE += run(0);
         output();
     } while(abs(dE)>1.0e-4);
+}
+
+double MC::get_energy(){
+    return E_tot.E();
+}
+
+double MC::get_acceptance_ratio(){
+    if(MC_count==0)
+        return 0;
+    return acc/(double)MC_count;
 }
 
 void MC::reset()

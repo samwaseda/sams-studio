@@ -9,5 +9,7 @@ cdef extern from "MC.h":
         MC(double, bool) except +
         void create_atoms(int, vector[double], vector[double], vector[int], vector[int], vector[double])
         double run(double, int)
-        double output(bool)
+        vector[double] get_magnetic_moments()
+        double get_acceptance_ratio()
+        double get_energy()
         void reset()
