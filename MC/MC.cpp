@@ -14,9 +14,8 @@ double quartic(double xxx){
     return square(xxx)*square(xxx);
 }
 
-Atom::Atom() : A(0), B(0), m_0(0), n_neigh(0), n_max(0), acc(0), count(0), E_uptodate(false), debug(false)
+Atom::Atom() : A(0), B(0), n_neigh(0), n_max(0), acc(0), count(0), E_uptodate(false), debug(false)
 {
-    x = new float[3];
     m = new double[3];
     m_old = new double[3];
     mabs = 1;
@@ -58,14 +57,6 @@ double Atom::E(bool force_compute=false){
     if(!debug)
         E_uptodate = true;
     return E_current;
-}
-
-double Atom::E_harmonic(){
-    return slope*square(mabs-m_0);
-}
-
-double Atom::dE_harmonic(){
-    return slope*(square(mabs-m_0)-square(mabs_old-m_0));
 }
 
 double Atom::dE(){
@@ -125,17 +116,11 @@ void Atom::set_AB(double A_in, double B_in){
         cout<<"WARNING: Negative B value will make it diverge"<<endl;
     A = A_in;
     B = B_in;
-    slope = 2.0*abs(A);
-    if (A<0)
-        m_0 = sqrt(-0.5*A/B);
 }
 
 void Atom::set_neighbor(double* mm, double JJ){
     if(n_neigh>=n_max)
-    {
-        cout<<"ERROR: n_max too small: "<<n_neigh<<" "<<n_max<<endl;
-        exit(EXIT_FAILURE);
-    }
+        throw invalid_argument("number of neighbors too small");
     E_uptodate = false;
     m_n[n_neigh] = mm;
     J[n_neigh] = JJ;
@@ -168,6 +153,13 @@ void Atom::propose_new_state(){
     set_m(mabs_new, theta_new, phi_new);
 }
 
+Atom::~Atom(){
+    delete m_old;
+    delete J;
+    delete m_n;
+    delete m;
+}
+
 average_energy::average_energy(){ reset();}
 
 void average_energy::add(double E_in, bool total_energy=false)
@@ -179,12 +171,20 @@ void average_energy::add(double E_in, bool total_energy=false)
     else
         E_sum += E_in;
     EE += E_sum;
+    EE_sq += square(E_sum);
     NN += 1;
 }
 
-double average_energy::E(){
+double average_energy::E_mean(){
     if(NN>0)
         return EE/(double)NN;
+    else
+        return 0;
+}
+
+double average_energy::E_var(){
+    if(NN>0)
+        return (EE_sq-square(EE)/(double)NN)/(double)NN;
     else
         return 0;
 }
@@ -194,18 +194,17 @@ void average_energy::reset()
     EE = 0;
     NN = 0;
     E_sum = 0;
+    EE_sq = 0;
 }
 
-MC::MC(): acc(0), MC_count(0), thermodynamic_integration(false), kB(8.6173305e-5)
+MC::MC(): thermodynamic_integration(false), kB(8.6173305e-5)
 {
-    cout<<"Starting initialization"<<endl;
-    ausgabe.open("MC.log", ios::out);
-    ausgabe<<"# Starting a Metropolis Monte Carlo simulation"<<endl;
+    reset();
 }
 
 void MC::set_lambda(double lambda_in)
 {
-    if(lambda<0 || lambda>1)
+    if(lambda_in<0 || lambda_in>1)
         throw invalid_argument( "Lambda must be between 0 and 1" );
     thermodynamic_integration = true;
     lambda = lambda_in;
@@ -213,8 +212,6 @@ void MC::set_lambda(double lambda_in)
 
 void MC::activate_debug()
 {
-    if(!debug_mode)
-        ausgabe<<"## Debug mode activated"<<endl;
     debug_mode = true;
 }
 
@@ -222,7 +219,6 @@ void MC::create_atoms(int num_neigh, vector<double> A, vector<double> B, vector<
 {
 
     N_tot = int(A.size());
-    ausgabe<<"# Creating "<<N_tot<<" atoms with "<<num_neigh<<" neighbors."<<endl;
     atom = new Atom[N_tot];
     for(int i=0; i<N_tot; i++)
     {
@@ -231,27 +227,11 @@ void MC::create_atoms(int num_neigh, vector<double> A, vector<double> B, vector<
     }
     for(int i=0; i<int(J.size()); i++)
         atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i));
-
-    double EE = 0, E = 0, E_max, E_min, E_harm = 0;
-    for(int i=0; i<N_tot; i++)
-    {
-        E += atom[i].E(true);
-        EE += square(atom[i].E());
-        E_harm += atom[i].E_harmonic();
-        if(i==0 || E_max<atom[i].E())
-            E_max = atom[i].E();
-        if(i==0 || E_min>atom[i].E())
-            E_min = atom[i].E();
-    }
-    E_tot.add(E-E_harm, true);
-    ausgabe<<"# Initial total energy: "<<E<<" per atom: "<<E/N_tot<<"+-"<<sqrt(EE*N_tot-square(E))/(double)N_tot<<" Emax: "<<E_max<<" Emin: "<<E_min<<endl;
-    if(E/N_tot<-1)
-        cout<<"WARNING: MC per atom "<<E/N_tot<<endl;
-    begin = clock();
 }
 
 double MC::run(double T_in, int number_of_iterations=1){
     double kBT = kB*T_in, dEE_tot = 0, dE, EE_tot=0;
+    clock_t begin = clock();
     int ID_rand;
     for(int i=0; i<N_tot; i++)
         EE_tot += atom[i].E(true);
@@ -280,66 +260,16 @@ double MC::run(double T_in, int number_of_iterations=1){
             for(int i=0; i<N_tot; i++)
                 EE_tot += atom[i].E(true);
             if(abs(EE_tot-dEE_tot)>1.0e-6*N_tot)
-            {
-                cout<<"ERROR: Problem with the energy difference: "<<EE_tot<<" "<<dEE_tot<<endl;
-                exit(EXIT_FAILURE);
-            }
+                throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot)+" "+to_string(dEE_tot) );
         }
         E_tot.add(dEE_tot);
     }
+    steps_per_second = N_tot*number_of_iterations/(double)(clock()-begin)*CLOCKS_PER_SEC;
     return dEE_tot;
 }
 
-double MC::output(bool config=false){
-    double m_ave[3], mm_ave[3], E=0, m_min=0, m_max=0, EE=0, E_min=0, E_max=0, m_tmp, E_harm=0;
-    for(int i=0; i<3; i++)
-    {
-        m_ave[i] = 0;
-        mm_ave[i] = 0;
-    }
-    for(int i=0; i<N_tot; i++)
-    {
-        for(int j=0; j<3; j++)
-        {
-            m_ave[j] += atom[i].m[j];
-            mm_ave[j] += atom[i].m[j]*atom[i].m[j];
-        }
-        m_tmp = sqrt(square(atom[i].m[0])+square(atom[i].m[1])+square(atom[i].m[2]));
-        if(m_min>m_tmp || i==0)
-            m_min = m_tmp;
-        if(m_max<m_tmp || i==0)
-            m_max = m_tmp;
-        E += atom[i].E(true);
-        if (thermodynamic_integration)
-            E_harm += atom[i].E_harmonic();
-        EE += square(atom[i].E());
-        if(E_min>atom[i].E() || i==0)
-            E_min = atom[i].E();
-        if(E_max>atom[i].E() || i==0)
-            E_max = atom[i].E();
-    }
-    E_tot.add(E-E_harm, true);
-    ausgabe<<int((double)(clock()-begin)/CLOCKS_PER_SEC+0.5)<<" "
-        <<m_ave[0]/N_tot<<" "<<m_ave[1]/N_tot<<" "<<m_ave[2]/N_tot<<" "
-        <<sqrt(mm_ave[0]*N_tot-m_ave[0]*m_ave[0])/N_tot<<" "<<sqrt(mm_ave[1]*N_tot-m_ave[1]*m_ave[1])/N_tot<<" "<<sqrt(mm_ave[2]*N_tot-m_ave[2]*m_ave[2])/N_tot<<" "
-        <<(double)acc/(double)MC_count<<" "<<fixed<<setprecision(6)<<E<<" "<<fixed<<setprecision(6)<<E_harm<<" "<<fixed<<setprecision(6)<<E_tot.E()<<" "<<sqrt(EE*N_tot-E*E)/N_tot<<endl;
-    m_tmp = m_ave[0]*m_ave[0]+m_ave[1]*m_ave[1]+m_ave[2]*m_ave[2];
-    cout<<setw(7)<<int((double)(clock()-begin)/CLOCKS_PER_SEC+0.5)
-        <<setw(10)<<sqrt(m_tmp)/N_tot
-        <<setw(11)<<sqrt((mm_ave[0]+mm_ave[1]+mm_ave[2])*N_tot-m_tmp)/N_tot
-        <<setw(10)<<(double)acc/(double)MC_count<<setw(10)<<E_tot.E()
-        <<setw(10)<<E_harm
-        <<" "<<E/N_tot<<" "<<sqrt(EE*N_tot-E*E)/N_tot<<endl;
-    if(config)
-    {
-        config_ausgabe.open("config.dat", ios::out);
-        for(int i=0; i<N_tot; i++)
-            config_ausgabe<<atom[i].x[0]<<" "<<atom[i].x[1]<<" "<<atom[i].x[2]<<" "
-                <<atom[i].m[0]<<" "<<atom[i].m[1]<<" "<<atom[i].m[2]<<" "
-                <<atom[i].E()<<" "<<atom[i].acceptance_ratio()<<endl;
-        config_ausgabe.close();
-    }
-    return E;
+double MC::get_steps_per_second(){
+    return (double)steps_per_second;
 }
 
 vector<double> MC::get_magnetic_moments(){
@@ -351,22 +281,19 @@ vector<double> MC::get_magnetic_moments(){
     return m;
 }
 
-void MC::E_min(){
-    cout<<"Starting to calculate the energy minimum"<<endl;
-    //for(int i=0; i<N_tot; i++)
-    //	m[i] = 2.2;
-    double dE = 1;
-    do
-    {
-        dE = 0;
-        for(int i=0; i<1000; i++)
-            dE += run(0);
-        output();
-    } while(abs(dE)>1.0e-4);
+double MC::get_energy(){
+    double EE=0;
+    for(int i=0; i<N_tot; i++)
+        EE += atom[i].E(true);
+    return EE;
 }
 
-double MC::get_energy(){
-    return E_tot.E();
+double MC::get_mean_energy(){
+    return E_tot.E_mean();
+}
+
+double MC::get_energy_variance(){
+    return E_tot.E_var();
 }
 
 double MC::get_acceptance_ratio(){
@@ -380,5 +307,10 @@ void MC::reset()
     acc = 0;
     MC_count = 0;
     E_tot.reset();
+}
+
+MC::~MC()
+{
+    delete atom;
 }
 

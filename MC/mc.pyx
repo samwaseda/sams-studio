@@ -11,7 +11,7 @@ cdef class MC:
         A = structure.A
         B = structure.B
         J = np.array(structure.J)
-        num_neigh = J.shape[1]
+        num_neigh = J.shape[-1]
         neigh = np.array(structure.neigh)
         me = np.arange(len(structure))[:, np.newaxis]*np.ones_like(neigh)
         J = J.flatten()
@@ -44,4 +44,16 @@ cdef class MC:
 
     def get_energy(self):
         return self.c_mc.get_energy()
+
+    def get_mean_energy(self):
+        return self.c_mc.get_mean_energy()
+
+    def get_energy_variance(self):
+        return self.c_mc.get_energy_variance()
+
+    def set_lambda(self, val):
+        self.c_mc.set_lambda(val)
+
+    def get_steps_per_second(self):
+        return self.c_mc.get_steps_per_second()
 

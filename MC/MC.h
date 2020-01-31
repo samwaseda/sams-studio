@@ -24,18 +24,16 @@ double quartic(double);
 
 class Atom{
     private:
-        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, *J, A, B, **m_n, E_current, slope, m_0;
+        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, *J, A, B, **m_n, E_current;
         int n_neigh, n_max, acc, count;
         bool E_uptodate, debug; // This does not work when neighbors change their m
     public:
         double *m;
-        float  *x;
         Atom();
+        ~Atom();
         void set_num_neighbors(int);
         float acceptance_ratio();
         double E(bool);
-        double E_harmonic();
-        double dE_harmonic();
         double dE();
         void set_m(double, double, double);
         void revoke();
@@ -52,36 +50,38 @@ class Atom{
 class average_energy
 {
     private:
-        double EE, E_sum;
+        double EE, E_sum, EE_sq;
         int NN;
     public:
         average_energy();
         void add(double, bool);
-        double E();
+        double E_mean();
+        double E_var();
         void reset();
 };
 
 class MC{
     private:
         int acc, MC_count, N_tot;
-        clock_t begin;
+        clock_t steps_per_second;
         bool debug_mode, thermodynamic_integration;
         double kB, lambda;
         Atom *atom;
-        fstream ausgabe, config_ausgabe;
         default_random_engine generator;
         average_energy E_tot;
     public:
         MC();
+        ~MC();
         void create_atoms(int, vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
         void activate_debug();
         double run(double, int);
-        void E_min();
-        double output(bool);
         void set_lambda(double);
         vector<double> get_magnetic_moments();
         double get_acceptance_ratio();
         double get_energy();
+        double get_mean_energy();
+        double get_energy_variance();
+        double get_steps_per_second();
         void reset();
 };
 
