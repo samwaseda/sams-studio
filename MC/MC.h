@@ -24,7 +24,7 @@ double quartic(double);
 
 class Atom{
     private:
-        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, **J, A[2], B[2], **m_n, E_current, dE_current, dm, dphi, dtheta;
+        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, *J[2], A[2], B[2], **m_n, E_current, dE_current, dm, dphi, dtheta;
         int n_neigh[2], n_max, acc, count;
         bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m
         void update_flag(bool);

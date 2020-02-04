@@ -45,7 +45,6 @@ void Atom::update_flag(bool ff=false){
 void Atom::set_num_neighbors(int num_neighbors=96){
     n_max = num_neighbors;
     m_n = new double*[n_max];
-    J = new double*[2];
     for (int i=0; i<2; i++)
         J[i] = new double [n_max];
     for(int i=0; i<2; i++)
@@ -160,7 +159,6 @@ Atom::~Atom(){
     delete m_old;
     for (int i=0; i<2; i++)
         delete J[i];
-    delete J;
     delete m_n;
     delete m;
 }
