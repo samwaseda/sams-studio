@@ -167,39 +167,42 @@ Atom::~Atom(){
 
 average_energy::average_energy(){ reset();}
 
-void average_energy::add(double E_in, bool total_energy=false)
+void average_energy::add(double E_in, bool total_energy=false, int index=0)
 {
     if (E_in==0)
         return;
     if (total_energy)
-        E_sum = E_in;
+        E_sum[index] = E_in;
     else
-        E_sum += E_in;
-    EE += E_sum;
-    EE_sq += square(E_sum);
-    NN += 1;
+        E_sum[index] += E_in;
+    EE[index] += E_sum[index];
+    EE_sq[index] += square(E_sum[index]);
+    NN[index] += 1;
 }
 
-double average_energy::E_mean(){
-    if(NN>0)
-        return EE/(double)NN;
+double average_energy::E_mean(int index=0){
+    if(NN[index]>0)
+        return EE[index]/(double)NN[index];
     else
         return 0;
 }
 
-double average_energy::E_var(){
-    if(NN>0)
-        return (EE_sq-square(EE)/(double)NN)/(double)NN;
+double average_energy::E_var(int index=0){
+    if(NN[index]>0)
+        return (EE_sq[index]-square(EE[index])/(double)NN[index])/(double)NN[index];
     else
         return 0;
 }
 
 void average_energy::reset()
 {
-    EE = 0;
-    NN = 0;
-    E_sum = 0;
-    EE_sq = 0;
+    for(int i=0; i<2; i++)
+    {
+        EE[i] = 0;
+        NN[i] = 0;
+        E_sum[i] = 0;
+        EE_sq[i] = 0;
+    }
 }
 
 MC::MC(): thermodynamic_integration_flag(0), kB(8.6173305e-5)
@@ -260,28 +263,42 @@ bool MC::thermodynamic_integration(){
     }
 }
 
-double MC::run(double T_in, int number_of_iterations=1){
-    double kBT = kB*T_in, dEE_tot = 0, dE, EE_tot=0;
+void MC::run(double T_in, int number_of_iterations=1){
+    double kBT = kB*T_in, dEE_tot[2], dE, EE_tot[2];
     clock_t begin = clock();
     int ID_rand;
+    EE_tot[0] = 0;
+    EE_tot[1] = 0;
     for(int i=0; i<N_tot; i++)
-        EE_tot += atom[i].E(true);
-    E_tot.add(EE_tot, true);
+        EE_tot[0] += atom[i].E(true);
+    E_tot.add(EE_tot[0], true, 0);
+    if(thermodynamic_integration())
+        for(int i=0; i<N_tot; i++)
+            EE_tot[1] += atom[i].E(true, 1);
+    E_tot.add(EE_tot[1], true, 1);
     for(int iter=0; iter<number_of_iterations; iter++)
     {
-        dEE_tot = 0, EE_tot = 0;
+        for(int i=0; i<2; i++)
+        {
+            dEE_tot[i] = 0;
+            EE_tot[i] = 0;
+        }
         for(int i=0; debug_mode && i<N_tot; i++)
-            EE_tot -= atom[i].E(true);
+            EE_tot[0] -= atom[i].E(true);
         for(int i=0; i<N_tot; i++)
         {
             MC_count++;
             ID_rand = rand()%N_tot;
             atom[ID_rand].propose_new_state();
             dE = atom[ID_rand].dE();
+            if(thermodynamic_integration())
+                dE = lambda*dE+(1-lambda)*atom[ID_rand].dE(false, 1);
             if(dE<0 || (kBT>0)*exp(-dE/kBT)>rand()/(double)RAND_MAX)
             {
                 acc++;
-                dEE_tot += dE;
+                dEE_tot[0] += atom[ID_rand].dE(false, 0);
+                if(thermodynamic_integration())
+                    dEE_tot[1] += atom[ID_rand].dE(false, 1);
             }
             else
                 atom[ID_rand].revoke();
@@ -289,14 +306,15 @@ double MC::run(double T_in, int number_of_iterations=1){
         if(debug_mode)
         {
             for(int i=0; i<N_tot; i++)
-                EE_tot += atom[i].E(true);
-            if(abs(EE_tot-dEE_tot)>1.0e-6*N_tot)
-                throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot)+" "+to_string(dEE_tot) );
+                EE_tot[0] += atom[i].E(true);
+            if(abs(EE_tot[0]-dEE_tot[0])>1.0e-6*N_tot)
+                throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[0])+" "+to_string(dEE_tot[0]) );
         }
-        E_tot.add(dEE_tot);
+        E_tot.add(dEE_tot[0]);
+        if(thermodynamic_integration())
+            E_tot.add(dEE_tot[1], false, 1);
     }
     steps_per_second = N_tot*number_of_iterations/(double)(clock()-begin)*CLOCKS_PER_SEC;
-    return dEE_tot;
 }
 
 double MC::get_steps_per_second(){
@@ -312,19 +330,19 @@ vector<double> MC::get_magnetic_moments(){
     return m;
 }
 
-double MC::get_energy(){
+double MC::get_energy(int index=0){
     double EE=0;
     for(int i=0; i<N_tot; i++)
-        EE += atom[i].E(true);
+        EE += atom[i].E(true, index);
     return EE;
 }
 
-double MC::get_mean_energy(){
-    return E_tot.E_mean();
+double MC::get_mean_energy(int index=0){
+    return E_tot.E_mean(index);
 }
 
-double MC::get_energy_variance(){
-    return E_tot.E_var();
+double MC::get_energy_variance(int index=0){
+    return E_tot.E_var(index);
 }
 
 double MC::get_acceptance_ratio(){

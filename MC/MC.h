@@ -34,8 +34,8 @@ class Atom{
         ~Atom();
         void set_num_neighbors(int);
         float acceptance_ratio();
-        double E(bool, int);
-        double dE(bool, int);
+        double E(bool, int);    // force_compute, index
+        double dE(bool, int);   // force_compute, index
         void set_m(double, double, double);
         void revoke();
         void set_AB(double, double, int);
@@ -48,13 +48,13 @@ class Atom{
 class average_energy
 {
     private:
-        double EE, E_sum, EE_sq;
-        int NN;
+        double EE[2], E_sum[2], EE_sq[2];
+        int NN[2];
     public:
         average_energy();
-        void add(double, bool);
-        double E_mean();
-        double E_var();
+        void add(double, bool, int);
+        double E_mean(int);
+        double E_var(int);
         void reset();
 };
 
@@ -74,13 +74,13 @@ class MC{
         void create_atoms(int, vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
         void append_parameters(vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
         void activate_debug();
-        double run(double, int);
+        void run(double, int);
         void set_lambda(double);
         vector<double> get_magnetic_moments();
         double get_acceptance_ratio();
-        double get_energy();
-        double get_mean_energy();
-        double get_energy_variance();
+        double get_energy(int);
+        double get_mean_energy(int);
+        double get_energy_variance(int);
         double get_steps_per_second();
         void set_magnitude(double, double, double);
         void reset();
