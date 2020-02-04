@@ -8,28 +8,33 @@ cdef class MC:
     cdef MCcpp c_mc
 
     def __cinit__(self, structure):
-        A = structure.A
-        self._thermodynamic_integration = False
+        A = np.array(structure.A)
+        thermodynamic_integration = False
         if len(A.shape)==2:
-            self._thermodynamic_integration = True
-        B = structure.B
+            thermodynamic_integration = True
+        B = np.array(structure.B)
         J = np.array(structure.J)
         num_neigh = J.shape[-1]
         neigh = np.array(structure.neigh)
-        me = np.arange(len(structure))[:, np.newaxis]*np.ones_like(neigh)
-        if self._thermodynamic_integration:
-            me = np.array([me, me])
-        if len(A)!=len(structure) or len(B)!=len(structure):
-            raise ValueError('Length of A or B is not the same as the structure length')
-        if len(J.flatten())>len(structure)*num_neigh:
-            raise ValueError('Problem with the structure length and/or number of neighbors')
+        if thermodynamic_integration:
+            me = np.arange(len(structure))[np.newaxis, :, np.newaxis]*np.ones_like(neigh)
+            if len(A[0])!=len(structure) or len(B[0])!=len(structure):
+                raise ValueError('Length of A or B is not the same as the structure length')
+            elif len(J.flatten())>2*len(structure)*num_neigh:
+                raise ValueError('Problem with the structure length and/or number of neighbors')
+        else:
+            me = np.arange(len(structure))[:, np.newaxis]*np.ones_like(neigh)
+            if len(A)!=len(structure) or len(B)!=len(structure):
+                raise ValueError('Length of A or B is not the same as the structure length')
+            if len(J.flatten())>len(structure)*num_neigh:
+                raise ValueError('Problem with the structure length and/or number of neighbors')
         if np.min(B)<0:
             raise ValueError('Negative B value will make the simulation explode')
         if np.max(neigh)>=len(structure) or np.min(neigh)<0:
             raise AssertionError('Problem with the neighbor ids')
         if np.max(me)>=len(structure) or np.min(me)<0:
             raise AssertionError('Problem with the ids')
-        if self._thermodynamic_integration:
+        if thermodynamic_integration:
             self.c_mc.create_atoms(num_neigh, A[0], B[0], me[0], neigh[0], J[0])
             self.c_mc.append_parameters(A[1], B[1], me[1], neigh[1], J[1])
         else:
