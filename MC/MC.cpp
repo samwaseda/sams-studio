@@ -292,7 +292,7 @@ void MC::run(double T_in, int number_of_iterations=1){
             atom[ID_rand].propose_new_state();
             dE = atom[ID_rand].dE();
             if(thermodynamic_integration())
-                dE = lambda*dE+(1-lambda)*atom[ID_rand].dE(false, 1);
+                dE = (1-lambda)*dE+lambda*atom[ID_rand].dE(false, 1);
             if(dE<0 || (kBT>0)*exp(-dE/kBT)>rand()/(double)RAND_MAX)
             {
                 acc++;

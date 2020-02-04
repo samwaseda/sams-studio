@@ -35,10 +35,10 @@ cdef class MC:
         if np.max(me)>=len(structure) or np.min(me)<0:
             raise AssertionError('Problem with the ids')
         if thermodynamic_integration:
-            self.c_mc.create_atoms(num_neigh, A[0], B[0], me[0], neigh[0], J[0])
-            self.c_mc.append_parameters(A[1], B[1], me[1], neigh[1], J[1])
+            self.c_mc.create_atoms(num_neigh, A[0], B[0], me[0].flatten()[J[0].flatten()!=None], neigh[0].flatten()[J[0].flatten()!=None], J[0].flatten()[J[0].flatten()!=None])
+            self.c_mc.append_parameters(A[1], B[1], me[1].flatten()[J[1].flatten()!=None], neigh[1].flatten()[J[1].flatten()!=None], J[1].flatten()[J[1].flatten()!=None])
         else:
-            self.c_mc.create_atoms(num_neigh, A, B, me, neigh, J)
+            self.c_mc.create_atoms(num_neigh, A, B, me.flatten()[J.flatten()!=None], neigh.flatten()[J.flatten()!=None], J.flatten()[J.flatten()!=None])
 
     def get_magnetic_moments(self):
         m = self.c_mc.get_magnetic_moments()
