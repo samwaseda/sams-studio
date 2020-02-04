@@ -14,10 +14,16 @@ double quartic(double xxx){
     return square(xxx)*square(xxx);
 }
 
-Atom::Atom() : A(0), B(0), n_neigh(0), n_max(0), acc(0), count(0), E_uptodate(false), debug(false)
+Atom::Atom() : n_max(0), acc(0), count(0), debug(false)
 {
     m = new double[3];
     m_old = new double[3];
+    for(int i=0; i<2; i++)
+    {
+        A[i] = 0;
+        B[i] = 0;
+        n_neigh[i] = 0;
+    }
     mabs = 1;
     phi = 0;
     theta = 0;
@@ -25,14 +31,26 @@ Atom::Atom() : A(0), B(0), n_neigh(0), n_max(0), acc(0), count(0), E_uptodate(fa
     m[0] = mabs*cos(phi)*sin(theta);
     m[1] = mabs*sin(phi)*sin(theta);
     m[2] = mabs*cos(theta);
+    update_flag(false);
+}
+
+void Atom::update_flag(bool ff=false){
+    for(int i=0; i<2; i++)
+    {
+        E_uptodate[i] = ff;
+        dE_uptodate[i] = ff;
+    }
 }
 
 void Atom::set_num_neighbors(int num_neighbors=96){
     n_max = num_neighbors;
     m_n = new double*[n_max];
-    J = new double[n_max];
-    for(int i=0; i<n_max; i++)
-        J[i] = 0;
+    J = new double*[2];
+    for (int i=0; i<2; i++)
+        J[i] = new double [n_max];
+    for(int i=0; i<2; i++)
+        for(int j=0; j<n_max; j++)
+            J[i][j] = 0;
 }
 
 void Atom::activate_debug(){
@@ -45,34 +63,39 @@ float Atom::acceptance_ratio(){
     return 0;
 }
 
-double Atom::E(bool force_compute=false){
-    if(E_uptodate && !force_compute)
+double Atom::E(bool force_compute=false, int index=0){
+    if(E_uptodate[index] && !force_compute)
         return E_current;
     E_current = 0;
-    for(int i_atom=0; i_atom<n_neigh; i_atom++)
-        E_current -= J[i_atom]*(m_n[i_atom][0]*m[0]
-                                +m_n[i_atom][1]*m[1]
-                                +m_n[i_atom][2]*m[2]);
+    for(int i_atom=0; i_atom<n_neigh[index]; i_atom++)
+        E_current -= J[index][i_atom]*(m_n[i_atom][0]*m[0]
+                                       +m_n[i_atom][1]*m[1]
+                                       +m_n[i_atom][2]*m[2]);
     E_current *= 0.5;
-    E_current += A*square(mabs)+B*quartic(mabs);
+    E_current += A[index]*square(mabs)+B[index]*quartic(mabs);
     if(!debug)
-        E_uptodate = true;
+        E_uptodate[index] = true;
     return E_current;
 }
 
-double Atom::dE(){
-    double EE = 0;
+double Atom::dE(bool force_compute=false, int index=0){
+    if(dE_uptodate[index] && !force_compute)
+        return dE_current;
+    dE_current = 0;
     count++;
     acc++;
-    for(int i_atom=0; i_atom<n_neigh; i_atom++)
-        EE -= J[i_atom]*(m_n[i_atom][0]*(m[0]-m_old[0])
-                         +m_n[i_atom][1]*(m[1]-m_old[1])
-                         +m_n[i_atom][2]*(m[2]-m_old[2]));
-    return A*(square(mabs)-square(mabs_old))+B*(quartic(mabs)-quartic(mabs_old))+EE;
+    for(int i_atom=0; i_atom<n_neigh[index]; i_atom++)
+        dE_current -= J[index][i_atom]*(m_n[i_atom][0]*(m[0]-m_old[0])
+                                        +m_n[i_atom][1]*(m[1]-m_old[1])
+                                        +m_n[i_atom][2]*(m[2]-m_old[2]));
+    dE_current += A[index]*(square(mabs)-square(mabs_old))+B[index]*(quartic(mabs)-quartic(mabs_old));
+    if(!debug)
+        dE_uptodate[index] = true;
+    return dE_current;
 }
 
 void Atom::set_m(double mabs_new, double theta_new, double phi_new){
-    E_uptodate = false;
+    update_flag(false);
     if(abs(mabs)>5)
         cout<<"WARNING: Magnetic moment value = "<<mabs<<endl;
     mabs_old = mabs;
@@ -93,25 +116,25 @@ void Atom::revoke(){
     set_m(mabs_old, theta_old, phi_old);
 }
 
-void Atom::set_AB(double A_in, double B_in){
-    E_uptodate = false;
-    if(A!=0 || B!=0)
+void Atom::set_AB(double A_in, double B_in, int index=0){
+    update_flag(false);
+    if(A[index]!=0 || B[index]!=0)
         cout<<"WARNING: A and B have already been set"<<endl;
     if(A_in==0 || B_in==0)
         cout<<"WARNING: Setting A=0 or B=0"<<endl;
     if(B_in<0)
         cout<<"WARNING: Negative B value will make it diverge"<<endl;
-    A = A_in;
-    B = B_in;
+    A[index] = A_in;
+    B[index] = B_in;
 }
 
-void Atom::set_neighbor(double* mm, double JJ){
-    if(n_neigh>=n_max)
+void Atom::set_neighbor(double* mm, double JJ, int index=0){
+    if(n_neigh[index]>=n_max)
         throw invalid_argument("number of neighbors too small");
-    E_uptodate = false;
-    m_n[n_neigh] = mm;
-    J[n_neigh] = JJ;
-    n_neigh++;
+    update_flag(false);
+    m_n[n_neigh[index]] = mm;
+    J[index][n_neigh[index]] = JJ;
+    n_neigh[index]++;
 }
 
 void Atom::propose_new_state(){
@@ -135,6 +158,8 @@ void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
 
 Atom::~Atom(){
     delete m_old;
+    for (int i=0; i<2; i++)
+        delete J[i];
     delete J;
     delete m_n;
     delete m;
@@ -177,7 +202,7 @@ void average_energy::reset()
     EE_sq = 0;
 }
 
-MC::MC(): thermodynamic_integration(false), kB(8.6173305e-5)
+MC::MC(): thermodynamic_integration_flag(0), kB(8.6173305e-5)
 {
     reset();
 }
@@ -186,7 +211,8 @@ void MC::set_lambda(double lambda_in)
 {
     if(lambda_in<0 || lambda_in>1)
         throw invalid_argument( "Lambda must be between 0 and 1" );
-    thermodynamic_integration = true;
+    if(thermodynamic_integration_flag%2==0)
+        thermodynamic_integration_flag++;
     lambda = lambda_in;
 }
 
@@ -207,6 +233,31 @@ void MC::create_atoms(int num_neigh, vector<double> A, vector<double> B, vector<
     }
     for(int i=0; i<int(J.size()); i++)
         atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i));
+}
+
+void MC::append_parameters(vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
+{
+    for(int i=0; i<N_tot; i++)
+        atom[i].set_AB(A[i], B[i], 1);
+    for(int i=0; i<int(J.size()); i++)
+        atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i), 1);
+    if(thermodynamic_integration_flag<2)
+        thermodynamic_integration_flag += 2;
+}
+
+bool MC::thermodynamic_integration(){
+    switch (thermodynamic_integration_flag){
+        case 0:
+            return false;
+        case 1:
+            throw invalid_argument("Parameters not set for lambda=1");
+        case 2:
+            throw invalid_argument("Lambda parameter not set");
+        case 3:
+            return true;
+        default:
+            throw invalid_argument("Something went wrong");
+    }
 }
 
 double MC::run(double T_in, int number_of_iterations=1){
