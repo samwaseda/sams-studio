@@ -24,7 +24,7 @@ double quartic(double);
 
 class Atom{
     private:
-        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, *J, A, B, **m_n, E_current;
+        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, *J, A, B, **m_n, E_current, dm, dphi, dtheta;
         int n_neigh, n_max, acc, count;
         bool E_uptodate, debug; // This does not work when neighbors change their m
     public:
@@ -37,14 +37,11 @@ class Atom{
         double dE();
         void set_m(double, double, double);
         void revoke();
-        void flip_z();
-        void modify_AB(double, double);
         void set_AB(double, double);
         void set_neighbor(double*, double);
-        int get_num_neighbors();
-        bool modify_neighbor(double*, double);
         void activate_debug();
         void propose_new_state();
+        void set_magnitude(double, double, double);
 };
 
 class average_energy
@@ -82,6 +79,7 @@ class MC{
         double get_mean_energy();
         double get_energy_variance();
         double get_steps_per_second();
+        void set_magnitude(double, double, double);
         void reset();
 };
 

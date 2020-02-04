@@ -57,3 +57,6 @@ cdef class MC:
     def get_steps_per_second(self):
         return self.c_mc.get_steps_per_second()
 
+    def set_magnitude(self, dm, dphi, dtheta):
+        self.c_mc.set_magnitude(dm, dphi, dtheta)
+

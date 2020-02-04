@@ -21,6 +21,7 @@ Atom::Atom() : A(0), B(0), n_neigh(0), n_max(0), acc(0), count(0), E_uptodate(fa
     mabs = 1;
     phi = 0;
     theta = 0;
+    set_magnitude(0.1, 0.1, 0.1);
     m[0] = mabs*cos(phi)*sin(theta);
     m[1] = mabs*sin(phi)*sin(theta);
     m[2] = mabs*cos(theta);
@@ -92,20 +93,6 @@ void Atom::revoke(){
     set_m(mabs_old, theta_old, phi_old);
 }
 
-void Atom::flip_z(){
-    set_m(mabs, -theta, -phi);
-}
-
-void Atom::modify_AB(double A_in, double B_in){
-    E_uptodate = false;
-    if(A==0 && B==0)
-        cout<<"WARNING: A and B seem not to have been set"<<endl;
-    A += A_in;
-    B += B_in;
-    if(B<0)
-        cout<<"WARNING: Negative B value will make it diverge"<<endl;
-}
-
 void Atom::set_AB(double A_in, double B_in){
     E_uptodate = false;
     if(A!=0 || B!=0)
@@ -127,30 +114,23 @@ void Atom::set_neighbor(double* mm, double JJ){
     n_neigh++;
 }
 
-int Atom::get_num_neighbors(){
-    return n_neigh;
-}
-
-bool Atom::modify_neighbor(double* mm, double JJ){
-    for (int i=0; i<n_neigh; i++)
-        if(m_n[i] == mm)
-        {
-            J[i] += JJ;
-            E_uptodate = false;
-            return true;
-        }
-    cout<<"ERROR: neighbor not found"<<endl;
-    return false;
-}
-
 void Atom::propose_new_state(){
-    double mabs_new = abs(mabs+0.1*zufall());
-    double theta_new = cos(theta)+0.2*zufall();
-    double phi_new = phi+0.4*M_PI*zufall();
+    double mabs_new = abs(mabs+dm*zufall());
+    double theta_new = cos(theta)+dtheta*zufall();
+    double phi_new = phi+dphi*zufall();
     while(abs(theta_new)>1)
         theta_new = cos(theta)+0.2*zufall();
     theta_new = acos(theta_new);
     set_m(mabs_new, theta_new, phi_new);
+}
+
+void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
+{
+    if(ddm<0 || ddphi<0 || ddtheta<0)
+        throw invalid_argument( "Magnitude cannot be a negative value" );
+    dm = ddm;
+    dphi = ddphi*2.0*M_PI;
+    dtheta = ddtheta;
 }
 
 Atom::~Atom(){
@@ -300,6 +280,12 @@ double MC::get_acceptance_ratio(){
     if(MC_count==0)
         return 0;
     return acc/(double)MC_count;
+}
+
+void MC::set_magnitude(double dm, double dphi, double dtheta)
+{
+    for(int i=0; i<N_tot; i++)
+        atom[i].set_magnitude(dm, dphi, dtheta);
 }
 
 void MC::reset()

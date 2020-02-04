@@ -6,7 +6,6 @@ cdef extern from "MC.cpp":
 cdef extern from "MC.h":
     cdef cppclass MC:
         MC() except +
-        MC(double, bool) except +
         void create_atoms(int, vector[double], vector[double], vector[int], vector[int], vector[double])
         double run(double, int) except +
         vector[double] get_magnetic_moments()
@@ -16,4 +15,5 @@ cdef extern from "MC.h":
         double get_mean_energy()
         double set_lambda(double) except +
         double get_steps_per_second()
+        double set_magnitude(double, double, double)
         void reset()
