@@ -14,7 +14,7 @@ double quartic(double xxx){
     return square(xxx)*square(xxx);
 }
 
-Atom::Atom() : n_max(0), acc(0), count(0), debug(false)
+Atom::Atom() : acc(0), count(0), debug(false)
 {
     m = new double[3];
     m_old = new double[3];
@@ -22,7 +22,6 @@ Atom::Atom() : n_max(0), acc(0), count(0), debug(false)
     {
         A[i] = 0;
         B[i] = 0;
-        n_neigh[i] = 0;
     }
     mabs = 1;
     phi = 0;
@@ -42,21 +41,11 @@ void Atom::update_flag(bool ff=false){
     }
 }
 
-void Atom::set_num_neighbors(int num_neighbors=96){
-    n_max = num_neighbors;
-    m_n = new double*[n_max];
-    for (int i=0; i<2; i++)
-        J[i] = new double [n_max];
-    for(int i=0; i<2; i++)
-        for(int j=0; j<n_max; j++)
-            J[i][j] = 0;
-}
-
 void Atom::activate_debug(){
     debug = true;
 }
 
-float Atom::acceptance_ratio(){
+float Atom::get_acceptance_ratio(){
     if(count!=0)
         return acc/(float) count;
     return 0;
@@ -66,10 +55,10 @@ double Atom::E(bool force_compute=false, int index=0){
     if(E_uptodate[index] && !force_compute)
         return E_current;
     E_current = 0;
-    for(int i_atom=0; i_atom<n_neigh[index]; i_atom++)
-        E_current -= J[index][i_atom]*(m_n[i_atom][0]*m[0]
-                                       +m_n[i_atom][1]*m[1]
-                                       +m_n[i_atom][2]*m[2]);
+    for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
+        E_current -= J[index].at(i_atom)*(m_n[index].at(i_atom)[0]*m[0]
+                                          +m_n[index].at(i_atom)[1]*m[1]
+                                          +m_n[index].at(i_atom)[2]*m[2]);
     E_current *= 0.5;
     E_current += A[index]*square(mabs)+B[index]*quartic(mabs);
     if(!debug)
@@ -83,10 +72,10 @@ double Atom::dE(bool force_compute=false, int index=0){
     dE_current = 0;
     count++;
     acc++;
-    for(int i_atom=0; i_atom<n_neigh[index]; i_atom++)
-        dE_current -= J[index][i_atom]*(m_n[i_atom][0]*(m[0]-m_old[0])
-                                        +m_n[i_atom][1]*(m[1]-m_old[1])
-                                        +m_n[i_atom][2]*(m[2]-m_old[2]));
+    for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
+        dE_current -= J[index].at(i_atom)*(m_n[index].at(i_atom)[0]*(m[0]-m_old[0])
+                                           +m_n[index].at(i_atom)[1]*(m[1]-m_old[1])
+                                           +m_n[index].at(i_atom)[2]*(m[2]-m_old[2]));
     dE_current += A[index]*(square(mabs)-square(mabs_old))+B[index]*(quartic(mabs)-quartic(mabs_old));
     if(!debug)
         dE_uptodate[index] = true;
@@ -128,12 +117,9 @@ void Atom::set_AB(double A_in, double B_in, int index=0){
 }
 
 void Atom::set_neighbor(double* mm, double JJ, int index=0){
-    if(n_neigh[index]>=n_max)
-        throw invalid_argument("number of neighbors too small");
     update_flag(false);
-    m_n[n_neigh[index]] = mm;
-    J[index][n_neigh[index]] = JJ;
-    n_neigh[index]++;
+    m_n[index].push_back(mm);
+    J[index].push_back(JJ);
 }
 
 void Atom::propose_new_state(){
@@ -156,11 +142,8 @@ void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
 }
 
 Atom::~Atom(){
-    delete m_old;
-    for (int i=0; i<2; i++)
-        delete J[i];
-    delete m_n;
-    delete m;
+    delete[] m_old;
+    delete[] m;
 }
 
 average_energy::average_energy(){ reset();}
@@ -222,16 +205,13 @@ void MC::activate_debug()
     debug_mode = true;
 }
 
-void MC::create_atoms(int num_neigh, vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
+void MC::create_atoms(vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
 {
 
     N_tot = int(A.size());
     atom = new Atom[N_tot];
     for(int i=0; i<N_tot; i++)
-    {
-        atom[i].set_num_neighbors(num_neigh);
         atom[i].set_AB(A[i], B[i]);
-    }
     for(int i=0; i<int(J.size()); i++)
         atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i));
 }
@@ -364,6 +344,6 @@ void MC::reset()
 
 MC::~MC()
 {
-    delete atom;
+    delete [] atom;
 }
 

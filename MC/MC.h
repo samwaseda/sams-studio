@@ -24,19 +24,20 @@ double quartic(double);
 
 class Atom{
     private:
-        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, *J[2], A[2], B[2], **m_n, E_current, dE_current, dm, dphi, dtheta;
-        int n_neigh[2], n_max, acc, count;
+        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, A[2], B[2], E_current, dE_current, dm, dphi, dtheta;
+        vector<double> J[2];
+        vector<double*> m_n[2];
+        int acc, count;
         bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m
         void update_flag(bool);
+        void set_m(double, double, double);
     public:
         double *m;
         Atom();
         ~Atom();
-        void set_num_neighbors(int);
-        float acceptance_ratio();
+        float get_acceptance_ratio();
         double E(bool, int);    // force_compute, index
         double dE(bool, int);   // force_compute, index
-        void set_m(double, double, double);
         void revoke();
         void set_AB(double, double, int);
         void set_neighbor(double*, double, int);
@@ -71,7 +72,7 @@ class MC{
     public:
         MC();
         ~MC();
-        void create_atoms(int, vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
+        void create_atoms(vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
         void append_parameters(vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
         void activate_debug();
         void run(double, int);

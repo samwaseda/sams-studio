@@ -14,20 +14,15 @@ cdef class MC:
             thermodynamic_integration = True
         B = np.array(structure.B)
         J = np.array(structure.J)
-        num_neigh = J.shape[-1]
         neigh = np.array(structure.neigh)
         if thermodynamic_integration:
             me = np.arange(len(structure))[np.newaxis, :, np.newaxis]*np.ones_like(neigh)
             if len(A[0])!=len(structure) or len(B[0])!=len(structure):
                 raise ValueError('Length of A or B is not the same as the structure length')
-            elif len(J.flatten())>2*len(structure)*num_neigh:
-                raise ValueError('Problem with the structure length and/or number of neighbors')
         else:
             me = np.arange(len(structure))[:, np.newaxis]*np.ones_like(neigh)
             if len(A)!=len(structure) or len(B)!=len(structure):
                 raise ValueError('Length of A or B is not the same as the structure length')
-            if len(J.flatten())>len(structure)*num_neigh:
-                raise ValueError('Problem with the structure length and/or number of neighbors')
         if np.min(B)<0:
             raise ValueError('Negative B value will make the simulation explode')
         if np.max(neigh)>=len(structure) or np.min(neigh)<0:
@@ -35,10 +30,10 @@ cdef class MC:
         if np.max(me)>=len(structure) or np.min(me)<0:
             raise AssertionError('Problem with the ids')
         if thermodynamic_integration:
-            self.c_mc.create_atoms(num_neigh, A[0], B[0], me[0].flatten()[J[0].flatten()!=None], neigh[0].flatten()[J[0].flatten()!=None], J[0].flatten()[J[0].flatten()!=None])
+            self.c_mc.create_atoms(A[0], B[0], me[0].flatten()[J[0].flatten()!=None], neigh[0].flatten()[J[0].flatten()!=None], J[0].flatten()[J[0].flatten()!=None])
             self.c_mc.append_parameters(A[1], B[1], me[1].flatten()[J[1].flatten()!=None], neigh[1].flatten()[J[1].flatten()!=None], J[1].flatten()[J[1].flatten()!=None])
         else:
-            self.c_mc.create_atoms(num_neigh, A, B, me.flatten()[J.flatten()!=None], neigh.flatten()[J.flatten()!=None], J.flatten()[J.flatten()!=None])
+            self.c_mc.create_atoms(A, B, me.flatten()[J.flatten()!=None], neigh.flatten()[J.flatten()!=None], J.flatten()[J.flatten()!=None])
 
     def get_magnetic_moments(self):
         m = self.c_mc.get_magnetic_moments()
