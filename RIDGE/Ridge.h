@@ -22,22 +22,27 @@ class Ridge{
 		int n_dim, n_cv, n_set;
 		double *increment, chi_old, val_error;
         vector<double> yy;
-		bool true_error;
+		bool true_error, debug;
 		MatrixXd *H;
 		VectorXd *hy, lambda, coeff;
+        void chi_training(bool);
     public:
         Ridge();
         ~Ridge();
+        void activate_debug();
         void set_number_of_cv_set(int);
         double get_determinant();
-        void initialize_sets(vector<double>, vector<double>, bool);
+        double get_validation_error();
+        double get_true_error();
+        void initialize_sets(vector<double>, vector<double>, bool, bool);
         void ridge(double);
         void classic(int);
-        void chi_training(bool);
         double chi(bool);
         void least_square();
         void random(int);
         void raw(int);
+        vector<double> get_coeff();
+        vector<double> get_lambda();
 };
 
 #endif

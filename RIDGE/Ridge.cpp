@@ -4,7 +4,7 @@ double square(double x){
     return x*x;
 }
 
-Ridge::Ridge() : n_dim(0), n_set(10), chi_old(0), val_error(0){}
+Ridge::Ridge() : n_dim(0), n_cv(10), chi_old(0), val_error(0), debug(false){}
 
 double Ridge::get_determinant()
 {
@@ -23,10 +23,16 @@ double Ridge::get_determinant()
     //output<<"Determinants: min = "<<dd_min<<", max = "<<dd_max<<", sum = "<<dd_sum<<" += "<<sqrt(dd_var-dd_sum*dd_sum/n_set)<<"\n";
 }
 
+void Ridge::activate_debug(){
+    debug = true;
+}
+
 void Ridge::set_number_of_cv_set(int n_set_in)
 {
     if(n_set_in<=0)
         throw invalid_argument("Number of cross validation set has to be larger than one");
+    if(n_dim!=0)
+        throw invalid_argument("Number of cross validation set cannot be changed after initialization");
     n_set = n_set_in;
 }
 
@@ -47,19 +53,35 @@ void Ridge::chi_training(bool regulation=true){
         if (regulation)
         {
             for(int j=0; j<n_dim; j++)
-                HL_tmp(j,j) += exp(lambda(j));
+                HL_tmp(j,j) += exp(-lambda(j));
         }
         coeff = HL_tmp.inverse()*hy_tmp;
         val_error += yy[tr_set]+ (double) (-2.0*coeff.transpose()*hy[tr_set]+(double)(coeff.transpose()*H[tr_set]*coeff));
     }
     val_error = sqrt(val_error/n_cv);
+    if(coeff.norm()==0)
+        throw invalid_argument("All coefficients are zero");
 }
 
-void Ridge::initialize_sets(vector<double> x_in, vector<double> y_in, bool zeroth)
+double Ridge::get_validation_error(){
+    return val_error;
+}
+
+double Ridge::get_true_error(){
+    if(true_error)
+        return 0;
+    return sqrt(yy[n_cv]-2*coeff.transpose()*hy[n_cv]+coeff.transpose()*H[n_cv]*coeff);
+}
+
+void Ridge::initialize_sets(vector<double> x_in, vector<double> y_in, bool zeroth, bool true_error_in)
 {
     int n_data;
+    true_error = true_error_in;
     n_data = int(y_in.size());
     n_dim = int(int(x_in.size())/int(n_data));
+    n_set = n_cv;
+    if(true_error)
+        n_set++;
     if(zeroth)
         n_dim++;
     H = new MatrixXd[n_set];
@@ -86,11 +108,14 @@ void Ridge::initialize_sets(vector<double> x_in, vector<double> y_in, bool zerot
         for(int i=0; i<n_dim; i++)
         {
             for(int j=0; j<n_dim; j++)
-                H[ID_tmp](i,j) += s_in[i]*s_in[line];
+                H[ID_tmp](i,j) += s_in[i]*s_in[j];
             hy[ID_tmp](i) += s_in[i]*y_in.at(line);
         }
         yy[ID_tmp] += square(y_in.at(line));
     }
+    for(int i=0; debug && i<n_set; i++)
+        if(hy[i].norm()==0)
+            throw invalid_argument("There was a problem with initialization");
 }
 
 void Ridge::ridge(double lambda_in)
@@ -212,4 +237,16 @@ void Ridge::raw(int max_step){
         if(i>10 && abs(chi_init-val_error)<0.00001*val_error)
             break;
     }
+}
+
+vector<double> Ridge::get_coeff()
+{
+        vector<double> vec(coeff.begin(), coeff.end());
+        return vec;
+}
+
+vector<double> Ridge::get_lambda()
+{
+        vector<double> vec(lambda.begin(), lambda.end());
+        return vec;
 }
