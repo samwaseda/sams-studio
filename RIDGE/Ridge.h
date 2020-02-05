@@ -19,13 +19,14 @@ double square(double);
 
 class Ridge{
 	private:
-		int n_dim, n_cv, n_set;
-		double *increment, chi_old, val_error;
-        vector<double> yy;
+		int n_dim, n_cv;
+		double chi_old, val_error;
+        vector<double> yy, increment;
 		bool true_error, debug;
 		MatrixXd *H;
 		VectorXd *hy, lambda, coeff;
         void chi_training(bool);
+        int n_set();
     public:
         Ridge();
         ~Ridge();
@@ -41,6 +42,7 @@ class Ridge{
         void least_square();
         void random(int);
         void raw(int);
+        void reset_increment();
         vector<double> get_coeff();
         vector<double> get_lambda();
 };
