@@ -6,21 +6,20 @@ double square(double x){
 
 Ridge::Ridge() : n_dim(0), n_cv(10), chi_old(0), val_error(0), debug(false){}
 
-double Ridge::get_determinant()
+vector<double> Ridge::get_determinant()
 {
-    double dd_min=0, dd_max, dd=0, dd_sum, dd_var;
+    vector<double> determinant;
     for(int i=0; i<n_set(); i++)
-    {
-        dd = H[i].determinant();
-        if(i==0 || dd_min>dd)
-            dd_min = dd;
-        if(i==0 || dd_max<dd)
-            dd_max = dd;
-        dd_sum += dd;
-        dd_var += dd*dd;
-    }
-    return dd_min;
-    //output<<"Determinants: min = "<<dd_min<<", max = "<<dd_max<<", sum = "<<dd_sum<<" += "<<sqrt(dd_var-dd_sum*dd_sum/n_set)<<"\n";
+        determinant.push_back(H[i].determinant());
+    return determinant;
+}
+
+vector<double> Ridge::get_sum_H()
+{
+    vector<double> sum_H;
+    for(int i=0; i<n_set(); i++)
+        sum_H.push_back(H[i].sum());
+    return sum_H;
 }
 
 void Ridge::activate_debug(){
@@ -59,7 +58,7 @@ void Ridge::chi_training(bool regulation=true){
         val_error += yy[tr_set]+ (double) (-2.0*coeff.transpose()*hy[tr_set]+(double)(coeff.transpose()*H[tr_set]*coeff));
     }
     val_error = sqrt(val_error/n_cv);
-    if(coeff.norm()==0)
+    if(debug && coeff.norm()==0)
         throw invalid_argument("All coefficients are zero");
 }
 
@@ -83,32 +82,35 @@ int Ridge::n_set(){
     return n_cv;
 }
 
-void Ridge::initialize_sets(vector<double> x_in, vector<double> y_in, bool zeroth, bool true_error_in)
+void Ridge::initialize_sets(vector<double> x_in, vector<double> y_in, int zeroth, bool true_error_in)
 {
+    zeroth = (zeroth>0);
     true_error = true_error_in;
     int n_data = int(y_in.size());
     n_dim = int(int(x_in.size())/int(n_data));
-    if(zeroth)
+    if(int(x_in.size())!=n_data*n_dim)
+        throw invalid_argument("Dimension of x is not wrong");
+    if(zeroth>0)
         n_dim++;
     H = new MatrixXd[n_set()];
     hy = new VectorXd[n_set()];
     yy.resize(n_set(), 0);
     double s_in[n_dim];
     lambda = VectorXd::Zero(n_dim);
+    coeff = VectorXd::Zero(n_dim);
     reset_increment();
     for(int i=0; i<n_set(); i++)
     {
         H[i] = MatrixXd::Zero(n_dim, n_dim);
         hy[i] = VectorXd::Zero(n_dim);
     }
-    coeff = VectorXd::Zero(n_dim);
+    if (zeroth>0)
+        s_in[0]=1.0;
     for(int line=0; line<n_data; line++)
     {
         int ID_tmp = line%(n_set());
-        if (zeroth)
-            s_in[0]=1.0;
-        for(int i=int(zeroth); i<n_dim; i++)
-            s_in[i] = x_in[line*n_dim+i];
+        for(int i=0; i<n_dim; i++)
+            s_in[i+int(zeroth)] = x_in[line*(n_dim-int(zeroth))+i];
         for(int i=0; i<n_dim; i++)
         {
             for(int j=0; j<n_dim; j++)
