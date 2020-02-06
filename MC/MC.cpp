@@ -12,6 +12,19 @@ double sextic(double xxx){ return quartic(xxx)*square(xxx); }
 double octic(double xxx){ return quartic(xxx)*quartic(xxx); }
 double decic(double xxx){ return sextic(xxx)*quartic(xxx); }
 
+double J_linear(double *m_one, double *m_two, double *m_three=NULL){
+    if (m_three!=NULL)
+        return m_one[0]*(m_two[0]-m_three[0])+m_one[1]*(m_two[1]-m_three[1])+m_one[2]*(m_two[2]-m_three[2]);
+    else
+        return m_one[0]*m_two[0]+m_one[1]*m_two[1]+m_one[2]*m_two[2];
+}
+double J_square(double *m_one, double *m_two, double *m_three=NULL){
+    if (m_three!=NULL)
+        return square(J_linear(m_one, m_two))-square(J_linear(m_one, m_three));
+    else
+        return square(J_linear(m_one, m_two));
+}
+
 Atom::Atom() : acc(0), count(0), debug(false)
 {
     m = new double[3];
@@ -49,12 +62,10 @@ double Atom::E(bool force_compute=false, int index=0){
         return E_current;
     E_current = 0;
     for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        E_current -= J[index].at(i_atom)*(m_n[index].at(i_atom)[0]*m[0]
-                                          +m_n[index].at(i_atom)[1]*m[1]
-                                          +m_n[index].at(i_atom)[2]*m[2]);
+        E_current -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, NULL);
     E_current *= 0.5;
     for(int i=0; i<int(landau_coeff[index].size()); i++)
-        E_current += landau_coeff[index].at(i)*landau_funcs[index].at(i)(mabs);
+        E_current += landau_coeff[index].at(i)*landau_func[index].at(i)(mabs);
     if(!debug)
         E_uptodate[index] = true;
     return E_current;
@@ -67,11 +78,9 @@ double Atom::dE(bool force_compute=false, int index=0){
     count++;
     acc++;
     for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        dE_current -= J[index].at(i_atom)*(m_n[index].at(i_atom)[0]*(m[0]-m_old[0])
-                                           +m_n[index].at(i_atom)[1]*(m[1]-m_old[1])
-                                           +m_n[index].at(i_atom)[2]*(m[2]-m_old[2]));
+        dE_current -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, m_old);
     for(int i=0; i<int(landau_coeff[index].size()); i++)
-        dE_current += landau_coeff[index].at(i)*(landau_funcs[index].at(i)(mabs)-landau_funcs[index].at(i)(mabs_old));
+        dE_current += landau_coeff[index].at(i)*(landau_func[index].at(i)(mabs)-landau_func[index].at(i)(mabs_old));
     if(!debug)
         dE_uptodate[index] = true;
     return dE_current;
@@ -106,29 +115,39 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     landau_coeff[index].push_back(value);
     switch(deg){
         case 2:
-            landau_funcs[index].push_back(square);
+            landau_func[index].push_back(square);
             break;
         case 4:
-            landau_funcs[index].push_back(quartic);
+            landau_func[index].push_back(quartic);
             break;
         case 6:
-            landau_funcs[index].push_back(sextic);
+            landau_func[index].push_back(sextic);
             break;
         case 8:
-            landau_funcs[index].push_back(octic);
+            landau_func[index].push_back(octic);
             break;
         case 10:
-            landau_funcs[index].push_back(decic);
+            landau_func[index].push_back(decic);
             break;
         default:
             throw invalid_argument("Longitudinal function not found");
     }
 }
 
-void Atom::set_neighbor(double* mm, double JJ, int index=0){
+void Atom::set_neighbor(double* mm, double JJ, int deg=1, int index=0){
     update_flag(false);
     m_n[index].push_back(mm);
-    J[index].push_back(JJ);
+    heisen_coeff[index].push_back(JJ);
+    switch(deg){
+        case 1:
+            heisen_func[index].push_back(J_linear);
+            break;
+        case 2:
+            heisen_func[index].push_back(J_square);
+            break;
+        default:
+            throw invalid_argument("Pairwise interaction not found");
+    }
 }
 
 void Atom::propose_new_state(){
@@ -234,7 +253,7 @@ void MC::append_parameters(vector<double> A, vector<double> B, vector<int> me, v
     for(int i=0; i<N_tot; i++)
         atom[i].set_landau_coeff(B[i], 4, 1);
     for(int i=0; i<int(J.size()); i++)
-        atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i), 1);
+        atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i), 1, 1);
     if(thermodynamic_integration_flag<2)
         thermodynamic_integration_flag += 2;
 }
@@ -258,15 +277,13 @@ void MC::run(double T_in, int number_of_iterations=1){
     double kBT = kB*T_in, dEE_tot[2], dE, EE_tot[2];
     clock_t begin = clock();
     int ID_rand;
-    EE_tot[0] = 0;
-    EE_tot[1] = 0;
-    for(int i=0; i<N_tot; i++)
-        EE_tot[0] += atom[i].E(true);
+    EE_tot[0] = get_energy(0);
     E_tot.add(EE_tot[0], true, 0);
     if(thermodynamic_integration())
-        for(int i=0; i<N_tot; i++)
-            EE_tot[1] += atom[i].E(true, 1);
-    E_tot.add(EE_tot[1], true, 1);
+    {
+        EE_tot[1] = get_energy(1);
+        E_tot.add(EE_tot[1], true, 1);
+    }
     for(int iter=0; iter<number_of_iterations; iter++)
     {
         for(int i=0; i<2; i++)
@@ -296,8 +313,7 @@ void MC::run(double T_in, int number_of_iterations=1){
         }
         if(debug_mode)
         {
-            for(int i=0; i<N_tot; i++)
-                EE_tot[0] += atom[i].E(true);
+            EE_tot[0] -= get_energy(0);
             if(abs(EE_tot[0]-dEE_tot[0])>1.0e-6*N_tot)
                 throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[0])+" "+to_string(dEE_tot[0]) );
         }
