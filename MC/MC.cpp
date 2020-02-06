@@ -18,11 +18,8 @@ Atom::Atom() : acc(0), count(0), debug(false)
 {
     m = new double[3];
     m_old = new double[3];
-    for(int i=0; i<2; i++)
-    {
-        A[i] = 0;
-        B[i] = 0;
-    }
+    A.resize(2, 0);
+    B.resize(2, 0);
     mabs = 1;
     phi = 0;
     theta = 0;
