@@ -6,20 +6,16 @@ double zufall(){
     return 1.0-2.0*(rand()/(double)RAND_MAX);
 }
 
-double square(double xxx){
-    return xxx*xxx;
-}
-
-double quartic(double xxx){
-    return square(xxx)*square(xxx);
-}
+double square(double xxx){ return xxx*xxx; }
+double quartic(double xxx){ return square(xxx)*square(xxx); }
+double sextic(double xxx){ return quartic(xxx)*square(xxx); }
+double octic(double xxx){ return quartic(xxx)*quartic(xxx); }
+double decic(double xxx){ return sextic(xxx)*quartic(xxx); }
 
 Atom::Atom() : acc(0), count(0), debug(false)
 {
     m = new double[3];
     m_old = new double[3];
-    A.resize(2, 0);
-    B.resize(2, 0);
     mabs = 1;
     phi = 0;
     theta = 0;
@@ -57,7 +53,8 @@ double Atom::E(bool force_compute=false, int index=0){
                                           +m_n[index].at(i_atom)[1]*m[1]
                                           +m_n[index].at(i_atom)[2]*m[2]);
     E_current *= 0.5;
-    E_current += A[index]*square(mabs)+B[index]*quartic(mabs);
+    for(int i=0; i<int(landau_coeff[index].size()); i++)
+        E_current += landau_coeff[index].at(i)*landau_funcs[index].at(i)(mabs);
     if(!debug)
         E_uptodate[index] = true;
     return E_current;
@@ -73,7 +70,8 @@ double Atom::dE(bool force_compute=false, int index=0){
         dE_current -= J[index].at(i_atom)*(m_n[index].at(i_atom)[0]*(m[0]-m_old[0])
                                            +m_n[index].at(i_atom)[1]*(m[1]-m_old[1])
                                            +m_n[index].at(i_atom)[2]*(m[2]-m_old[2]));
-    dE_current += A[index]*(square(mabs)-square(mabs_old))+B[index]*(quartic(mabs)-quartic(mabs_old));
+    for(int i=0; i<int(landau_coeff[index].size()); i++)
+        dE_current += landau_coeff[index].at(i)*(landau_funcs[index].at(i)(mabs)-landau_funcs[index].at(i)(mabs_old));
     if(!debug)
         dE_uptodate[index] = true;
     return dE_current;
@@ -101,16 +99,30 @@ void Atom::revoke(){
     set_m(mabs_old, theta_old, phi_old);
 }
 
-void Atom::set_AB(double A_in, double B_in, int index=0){
+void Atom::set_landau_coeff(double value, int deg, int index=0){
+    if(value==0)
+        return;
     update_flag(false);
-    if(A[index]!=0 || B[index]!=0)
-        cout<<"WARNING: A and B have already been set"<<endl;
-    if(A_in==0 || B_in==0)
-        cout<<"WARNING: Setting A=0 or B=0"<<endl;
-    if(B_in<0)
-        cout<<"WARNING: Negative B value will make it diverge"<<endl;
-    A[index] = A_in;
-    B[index] = B_in;
+    landau_coeff[index].push_back(value);
+    switch(deg){
+        case 2:
+            landau_funcs[index].push_back(square);
+            break;
+        case 4:
+            landau_funcs[index].push_back(quartic);
+            break;
+        case 6:
+            landau_funcs[index].push_back(sextic);
+            break;
+        case 8:
+            landau_funcs[index].push_back(octic);
+            break;
+        case 10:
+            landau_funcs[index].push_back(decic);
+            break;
+        default:
+            throw invalid_argument("Longitudinal function not found");
+    }
 }
 
 void Atom::set_neighbor(double* mm, double JJ, int index=0){
@@ -208,7 +220,9 @@ void MC::create_atoms(vector<double> A, vector<double> B, vector<int> me, vector
     N_tot = int(A.size());
     atom = new Atom[N_tot];
     for(int i=0; i<N_tot; i++)
-        atom[i].set_AB(A[i], B[i]);
+        atom[i].set_landau_coeff(A[i], 2);
+    for(int i=0; i<N_tot; i++)
+        atom[i].set_landau_coeff(B[i], 4);
     for(int i=0; i<int(J.size()); i++)
         atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i));
 }
@@ -216,7 +230,9 @@ void MC::create_atoms(vector<double> A, vector<double> B, vector<int> me, vector
 void MC::append_parameters(vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
 {
     for(int i=0; i<N_tot; i++)
-        atom[i].set_AB(A[i], B[i], 1);
+        atom[i].set_landau_coeff(A[i], 2, 1);
+    for(int i=0; i<N_tot; i++)
+        atom[i].set_landau_coeff(B[i], 4, 1);
     for(int i=0; i<int(J.size()); i++)
         atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i), 1);
     if(thermodynamic_integration_flag<2)

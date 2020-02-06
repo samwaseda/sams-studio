@@ -19,13 +19,16 @@ using namespace std;
 double zufall();
 
 double square(double);
-
 double quartic(double);
+double sextic(double);
+double octic(double);
+double decic(double);
 
 class Atom{
     private:
         double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, E_current, dE_current, dm, dphi, dtheta;
-        vector<double> J[2], A, B;
+        vector<double> J[2], landau_coeff[2];
+        vector<double (*)(double)> landau_funcs[2];
         vector<double*> m_n[2];
         int acc, count;
         bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m
@@ -39,7 +42,7 @@ class Atom{
         double E(bool, int);    // force_compute, index
         double dE(bool, int);   // force_compute, index
         void revoke();
-        void set_AB(double, double, int);
+        void set_landau_coeff(double, int, int);
         void set_neighbor(double*, double, int);
         void activate_debug();
         void propose_new_state();
