@@ -35,6 +35,10 @@ cdef class MC:
         else:
             self.c_mc.create_atoms(A, B ,me.flatten()[J.flatten()!=0], neigh.flatten()[J.flatten()!=0], J.flatten()[J.flatten()!=0])
 
+    def set_landau_coeff(self, coeff, deg, index=0):
+        coeff = np.array([coeff]).flatten()
+        self.c_mc.set_landau_coeff(coeff, deg, index)
+
     def get_magnetic_moments(self):
         m = self.c_mc.get_magnetic_moments()
         return np.array(m).reshape(-1, 3)

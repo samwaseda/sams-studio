@@ -84,6 +84,8 @@ class MC{
         void run(double, int);
         void set_lambda(double);
         vector<double> get_magnetic_moments();
+        void set_landau_coeff(vector<double>, int, int);
+        void set_heisen_coeff(vector<double>, vector<int>, vector<int>, int, int);
         double get_acceptance_ratio();
         double get_energy(int);
         double get_mean_energy(int);

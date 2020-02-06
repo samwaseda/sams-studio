@@ -258,6 +258,22 @@ void MC::append_parameters(vector<double> A, vector<double> B, vector<int> me, v
         thermodynamic_integration_flag += 2;
 }
 
+void MC::set_heisen_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0)
+{
+    if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
+        throw invalid_argument("Number of coefficients is not the same as the indices");
+    for(int i=0; i<int(coeff.size()); i++)
+        atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, coeff.at(i), deg, index);
+}
+
+void MC::set_landau_coeff(vector<double> coeff, int deg, int index=0)
+{
+    if(int(coeff.size())!=N_tot)
+        throw invalid_argument("Number of coefficients is not the same as the number of atoms");
+    for(int i=0; i<N_tot; i++)
+        atom[i].set_landau_coeff(coeff[i], deg, index);
+}
+
 bool MC::thermodynamic_integration(){
     switch (thermodynamic_integration_flag){
         case 0:
