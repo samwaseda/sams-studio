@@ -39,6 +39,14 @@ cdef class MC:
         coeff = np.array([coeff]).flatten()
         self.c_mc.set_landau_coeff(coeff, deg, index)
 
+    def set_heisenberg_coeff(self, coeff, me, neigh, deg, index=0):
+        coeff = coeff.flatten()
+        me = me.flatten()
+        neigh = neigh.flatten()
+        if len(coeff)!=len(me) or len(me)!=len(neigh):
+            raise ValueError('Length of vectors not the same')
+        self.c_mc.set_heisenberg_coeff(coeff, me, neigh, deg, index)
+
     def get_magnetic_moments(self):
         m = self.c_mc.get_magnetic_moments()
         return np.array(m).reshape(-1, 3)

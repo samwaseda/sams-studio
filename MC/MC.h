@@ -46,7 +46,7 @@ class Atom{
         double dE(bool, int);   // force_compute, index
         void revoke();
         void set_landau_coeff(double, int, int);
-        void set_neighbor(double*, double, int, int);
+        void set_heisenberg_coeff(double*, double, int, int);
         void activate_debug();
         void propose_new_state();
         void set_magnitude(double, double, double);
@@ -85,7 +85,7 @@ class MC{
         void set_lambda(double);
         vector<double> get_magnetic_moments();
         void set_landau_coeff(vector<double>, int, int);
-        void set_heisen_coeff(vector<double>, vector<int>, vector<int>, int, int);
+        void set_heisenberg_coeff(vector<double>, vector<int>, vector<int>, int, int);
         double get_acceptance_ratio();
         double get_energy(int);
         double get_mean_energy(int);

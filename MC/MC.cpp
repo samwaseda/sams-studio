@@ -134,7 +134,7 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     }
 }
 
-void Atom::set_neighbor(double* mm, double JJ, int deg=1, int index=0){
+void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0){
     update_flag(false);
     m_n[index].push_back(mm);
     heisen_coeff[index].push_back(JJ);
@@ -233,45 +233,39 @@ void MC::activate_debug()
     debug_mode = true;
 }
 
-void MC::create_atoms(vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
-{
-
-    N_tot = int(A.size());
-    atom = new Atom[N_tot];
-    for(int i=0; i<N_tot; i++)
-        atom[i].set_landau_coeff(A[i], 2);
-    for(int i=0; i<N_tot; i++)
-        atom[i].set_landau_coeff(B[i], 4);
-    for(int i=0; i<int(J.size()); i++)
-        atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i));
-}
-
-void MC::append_parameters(vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
-{
-    for(int i=0; i<N_tot; i++)
-        atom[i].set_landau_coeff(A[i], 2, 1);
-    for(int i=0; i<N_tot; i++)
-        atom[i].set_landau_coeff(B[i], 4, 1);
-    for(int i=0; i<int(J.size()); i++)
-        atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, J.at(i), 1, 1);
-    if(thermodynamic_integration_flag<2)
-        thermodynamic_integration_flag += 2;
-}
-
-void MC::set_heisen_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0)
-{
-    if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
-        throw invalid_argument("Number of coefficients is not the same as the indices");
-    for(int i=0; i<int(coeff.size()); i++)
-        atom[me.at(i)].set_neighbor(atom[neigh.at(i)].m, coeff.at(i), deg, index);
-}
-
 void MC::set_landau_coeff(vector<double> coeff, int deg, int index=0)
 {
     if(int(coeff.size())!=N_tot)
         throw invalid_argument("Number of coefficients is not the same as the number of atoms");
     for(int i=0; i<N_tot; i++)
         atom[i].set_landau_coeff(coeff[i], deg, index);
+}
+
+void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0)
+{
+    if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
+        throw invalid_argument("Number of coefficients is not the same as the indices");
+    for(int i=0; i<int(coeff.size()); i++)
+        atom[me.at(i)].set_heisenberg_coeff(atom[neigh.at(i)].m, coeff.at(i), deg, index);
+}
+
+void MC::create_atoms(vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
+{
+
+    N_tot = int(A.size());
+    atom = new Atom[N_tot];
+    set_landau_coeff(A, 2);
+    set_landau_coeff(B, 4);
+    set_heisenberg_coeff(J, me, neigh, 1);
+}
+
+void MC::append_parameters(vector<double> A, vector<double> B, vector<int> me, vector<int> neigh, vector<double> J)
+{
+    set_landau_coeff(A, 2, 1);
+    set_landau_coeff(B, 4, 1);
+    set_heisenberg_coeff(J, me, neigh, 1, 1);
+    if(thermodynamic_integration_flag<2)
+        thermodynamic_integration_flag += 2;
 }
 
 bool MC::thermodynamic_integration(){
