@@ -29,6 +29,7 @@ class Ridge{
         int n_set();
         VectorXd dchi();
         MatrixXd ddchi();
+        double chi(bool);
     public:
         Ridge();
         ~Ridge();
@@ -36,10 +37,9 @@ class Ridge{
         void set_number_of_cv_set(int);
         double get_validation_error();
         double get_true_error();
-        void initialize_sets(vector<double>, vector<double>, int, bool);
+        void initialize_sets(vector<double>, vector<double>, int, int);
         void ridge(double);
         void classic(int);
-        double chi(bool);
         void least_square();
         void random(int);
         void raw(int);
@@ -49,7 +49,7 @@ class Ridge{
         void set_lambda(vector<double>);
         vector<double> get_coeff();
         vector<double> get_lambda();
-        vector<double> get_determinant();
+        vector<double> get_determinant(int);
         vector<double> get_sum_H();
         vector<double> get_derivative();
         vector<double> get_hessian();

@@ -6,11 +6,19 @@ double square(double x){
 
 Ridge::Ridge() : n_dim(0), n_cv(10), chi_old(0), val_error(0), lambda_tol(100), debug(false){}
 
-vector<double> Ridge::get_determinant()
+vector<double> Ridge::get_determinant(int regularization)
 {
-    vector<double> determinant;
-    for(int i=0; i<n_set(); i++)
-        determinant.push_back(H[i].determinant());
+    vector<double> determinant(n_cv);
+    for(int tr_set=0; tr_set<n_cv; tr_set++)
+    {
+        MatrixXd HL_tmp = MatrixXd::Zero(n_dim, n_dim);
+        for(int j=0; j<n_cv; j++)
+            if(j!=tr_set)
+                HL_tmp += H[j];
+        for(int j=0; regularization && j<n_dim; j++)
+            HL_tmp(j,j) += exp(lambda(j));
+        determinant.at(tr_set) = HL_tmp.determinant();
+    }
     return determinant;
 }
 
@@ -82,7 +90,7 @@ int Ridge::n_set(){
     return n_cv;
 }
 
-void Ridge::initialize_sets(vector<double> x_in, vector<double> y_in, int zeroth, bool true_error_in)
+void Ridge::initialize_sets(vector<double> x_in, vector<double> y_in, int zeroth, int true_error_in)
 {
     zeroth = (zeroth>0);
     true_error = true_error_in;
