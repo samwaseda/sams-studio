@@ -252,7 +252,6 @@ void Ridge::set_lambda(vector<double> lambda_in){
 
 VectorXd Ridge::dchi(){
     VectorXd dchi_dlambda = VectorXd::Zero(n_dim);
-    val_error = 0;
     for(int tr_set=0; tr_set<n_cv; tr_set++)
     {
         MatrixXd HL_tmp = MatrixXd::Zero(n_dim, n_dim);
@@ -267,15 +266,12 @@ VectorXd Ridge::dchi(){
             }
         for(int j=0; j<n_dim; j++)
             HL_tmp(j,j) += exp(lambda(j));
-        //w = HL_tmp.inverse()*hy_tmp;
-        //val_error += yy[tr_set]+ (double) (-2.0*w.transpose()*hy[tr_set]+(double)(w.transpose()*H[tr_set]*w));
         MatrixXd HL_inv = HL_tmp.inverse();
         dchi_1 = HL_inv*hy_tmp;
         dchi_2 = HL_inv*(-hy[tr_set]+H[tr_set]*HL_inv*hy_tmp);
         for(int j=0; j<n_dim; j++)
             dchi_dlambda(j) += -2*dchi_1(j)*dchi_2(j);
     }
-    //val_error = sqrt(val_error/N_line/n_cv*(1.0+n_cv));
     for(int i=0; i<n_dim; i++)
         dchi_dlambda(i) *= exp(lambda(i)-lambda.mean());
     return dchi_dlambda;
@@ -283,7 +279,6 @@ VectorXd Ridge::dchi(){
 
 MatrixXd Ridge::ddchi(){
     MatrixXd ddchi_ddlambda = MatrixXd::Zero(n_dim, n_dim);
-    val_error = 0;
     for(int tr_set=0; tr_set<n_cv; tr_set++)
     {
         MatrixXd HL_tmp = MatrixXd::Zero(n_dim, n_dim);
@@ -299,8 +294,6 @@ MatrixXd Ridge::ddchi(){
             }
         for(int i=0; i<n_dim; i++)
             HL_tmp(i,i) += exp(lambda(i));
-        //w = HL_tmp.inverse()*hy_tmp;
-        //val_error += yy[tr_set]+ (double) (-2.0*w.transpose()*hy[tr_set]+(double)(w.transpose()*H[tr_set]*w));
         MatrixXd HL_inv = HL_tmp.inverse();
         ddchi_1 = 2*HL_inv*(-hy[tr_set]+H[tr_set]*HL_inv*hy_tmp)*hy_tmp.transpose()*HL_inv;
         //ddchi_1 += HL_inv*hy_tmp*(-hy[tr_set].transpose()+hy_tmp.transpose()*HL_inv*H[tr_set])*HL_inv;
@@ -314,7 +307,6 @@ MatrixXd Ridge::ddchi(){
             }
         ddchi_ddlambda += 2*(ddchi_1+ddchi_21);
     }
-    //val_error = sqrt(val_error/N_line/n_cv*(1.0+n_cv));
     for(int i=0; i<n_dim; i++)
         for(int j=0; j<n_dim; j++)
             ddchi_ddlambda(i,j) *= exp(lambda(i)+lambda(j)-lambda.mean());
@@ -367,6 +359,7 @@ void Ridge::conjugate_gradient(int max_cycle){
 
 vector<double> Ridge::get_coeff()
 {
+        chi(false);
         vector<double> vec(coeff.begin(), coeff.end());
         return vec;
 }
