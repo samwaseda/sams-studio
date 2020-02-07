@@ -20,13 +20,15 @@ double square(double);
 class Ridge{
     private:
         int n_dim, n_cv;
-        double chi_old, val_error;
+        double chi_old, val_error, lambda_tol;
         vector<double> yy, increment;
         bool true_error, debug;
         MatrixXd *H;
         VectorXd *hy, lambda, coeff;
         void chi_training(bool);
         int n_set();
+        VectorXd dchi();
+        MatrixXd ddchi();
     public:
         Ridge();
         ~Ridge();
@@ -41,11 +43,16 @@ class Ridge{
         void least_square();
         void random(int);
         void raw(int);
+        void conjugate_gradient(int);
+        void gradient_descent(int, double, double);
         void reset_increment();
+        void set_lambda(vector<double>);
         vector<double> get_coeff();
         vector<double> get_lambda();
         vector<double> get_determinant();
         vector<double> get_sum_H();
+        vector<double> get_derivative();
+        vector<double> get_hessian();
 };
 
 #endif
