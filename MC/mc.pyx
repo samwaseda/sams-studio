@@ -6,8 +6,10 @@ import numpy as np
 
 cdef class MC:
     cdef MCcpp c_mc
+    cdef readonly int number_of_atoms
 
     def __cinit__(self, structure):
+        self.number_of_atoms = len(structure)
         A = np.array(structure.A)
         thermodynamic_integration = False
         if len(A.shape)==2:
@@ -75,5 +77,14 @@ cdef class MC:
         return self.c_mc.get_steps_per_second()
 
     def set_magnitude(self, dm, dphi, dtheta):
+        dm = np.array([dm]).flatten()
+        dphi = np.array([dphi]).flatten()
+        dtheta = np.array([dtheta]).flatten()
+        if len(dm)==1:
+            dm = np.array(self.number_of_atoms*dm.tolist())
+        if len(dphi)==1:
+            dphi = np.array(self.number_of_atoms*dphi.tolist())
+        if len(dtheta)==1:
+            dtheta = np.array(self.number_of_atoms*dtheta.tolist())
         self.c_mc.set_magnitude(dm, dphi, dtheta)
 

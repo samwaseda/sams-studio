@@ -368,10 +368,12 @@ double MC::get_acceptance_ratio(){
     return acc/(double)MC_count;
 }
 
-void MC::set_magnitude(double dm, double dphi, double dtheta)
+void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dtheta)
 {
+    if(int(dm.size())!=int(dphi.size()) || int(dphi.size())!=int(dtheta.size()) || N_tot!=int(dm.size()))
+        throw invalid_argument("Length of vectors not consistent");
     for(int i=0; i<N_tot; i++)
-        atom[i].set_magnitude(dm, dphi, dtheta);
+        atom[i].set_magnitude(dm[i], dphi[i], dtheta[i]);
 }
 
 void MC::reset()

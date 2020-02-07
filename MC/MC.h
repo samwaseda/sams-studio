@@ -91,7 +91,7 @@ class MC{
         double get_mean_energy(int);
         double get_energy_variance(int);
         double get_steps_per_second();
-        void set_magnitude(double, double, double);
+        void set_magnitude(vector<double>, vector<double>, vector<double>);
         void reset();
 };
 

@@ -18,5 +18,5 @@ cdef extern from "MC.h":
         double get_mean_energy(int)
         double set_lambda(double) except +
         double get_steps_per_second()
-        double set_magnitude(double, double, double)
+        double set_magnitude(vector[double], vector[double], vector[double]) except +
         void reset()
