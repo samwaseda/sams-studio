@@ -49,6 +49,18 @@ cdef class MC:
             raise ValueError('Length of vectors not the same')
         self.c_mc.set_heisenberg_coeff(coeff, me, neigh, deg, index)
 
+    def clear_heisenberg_coeff(self, index=0):
+        self.c_mc.clear_heisenberg_coeff(index)
+
+    def clear_landau_coeff(self, index=0):
+        self.c_mc.clear_landau_coeff(index)
+
+    def clear_all_coeff(self):
+        self.clear_heisenberg_coeff()
+        self.clear_heisenberg_coeff(1)
+        self.clear_landau_coeff()
+        self.clear_landau_coeff(1)
+
     def get_magnetic_moments(self):
         m = self.c_mc.get_magnetic_moments()
         return np.array(m).reshape(-1, 3)

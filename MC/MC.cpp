@@ -150,6 +150,17 @@ void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0){
     }
 }
 
+void Atom::clear_heisenberg_coeff(int index){
+    heisen_coeff[index].clear();
+    heisen_func[index].clear();
+    m_n[index].clear();
+}
+
+void Atom::clear_landau_coeff(int index){
+    landau_coeff[index].clear();
+    landau_func[index].clear();
+}
+
 void Atom::propose_new_state(){
     double mabs_new = abs(mabs+dm*zufall());
     double theta_new = cos(theta)+dtheta*zufall();
@@ -266,6 +277,18 @@ void MC::append_parameters(vector<double> A, vector<double> B, vector<int> me, v
     set_heisenberg_coeff(J, me, neigh, 1, 1);
     if(thermodynamic_integration_flag<2)
         thermodynamic_integration_flag += 2;
+}
+
+void MC::clear_landau_coeff(int index=0)
+{
+    for(int i=0; i<N_tot; i++)
+        atom[i].clear_landau_coeff(index);
+}
+
+void MC::clear_heisenberg_coeff(int index=0)
+{
+    for(int i=0; i<N_tot; i++)
+        atom[i].clear_heisenberg_coeff(index);
 }
 
 bool MC::thermodynamic_integration(){

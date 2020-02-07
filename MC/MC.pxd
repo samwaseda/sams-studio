@@ -10,6 +10,8 @@ cdef extern from "MC.h":
         void append_parameters(vector[double], vector[double], vector[int], vector[int], vector[double])
         void set_landau_coeff(vector[double], int, int) except +
         void set_heisenberg_coeff(vector[double], vector[int], vector[int], int, int) except +
+        void clear_landau_coeff(int) except +
+        void clear_heisenberg_coeff(int) except +
         void run(double, int) except +
         vector[double] get_magnetic_moments()
         double get_acceptance_ratio()
