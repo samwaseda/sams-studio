@@ -44,9 +44,11 @@ cdef class MC:
         self.c_mc.set_landau_coeff(coeff, deg, index)
 
     def set_heisenberg_coeff(self, coeff, me, neigh, deg, index=0):
-        coeff = np.array(coeff).flatten()
+        coeff = np.array([coeff]).flatten()
         me = np.array(me).flatten()
         neigh = np.array(neigh).flatten()
+        if len(coeff)==1:
+            coeff = np.tile(coeff, len(me))
         if len(coeff)!=len(me) or len(me)!=len(neigh):
             raise ValueError('Length of vectors not the same')
         self.c_mc.set_heisenberg_coeff(coeff, me, neigh, deg, index)
