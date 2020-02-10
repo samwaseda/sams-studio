@@ -28,7 +28,7 @@ double J_square(double*, double*, double*);
 
 class Atom{
     private:
-        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, E_current, dE_current, dm, dphi, dtheta;
+        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, E_current, dE_current, dm, dphi, dtheta, mmax;
         vector<double> heisen_coeff[2], landau_coeff[2];
         vector<double (*)(double)> landau_func[2];
         vector<double (*)(double*, double*, double*)> heisen_func[2];

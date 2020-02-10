@@ -25,7 +25,7 @@ double J_square(double *m_one, double *m_two, double *m_three=NULL){
         return square(J_linear(m_one, m_two));
 }
 
-Atom::Atom() : acc(0), count(0), debug(false)
+Atom::Atom() : mmax(5), acc(0), count(0), debug(false)
 {
     m = new double[3];
     m_old = new double[3];
@@ -88,8 +88,8 @@ double Atom::dE(bool force_compute=false, int index=0){
 
 void Atom::set_m(double mabs_new, double theta_new, double phi_new){
     update_flag(false);
-    if(abs(mabs)>5)
-        cout<<"WARNING: Magnetic moment value = "<<mabs<<endl;
+    if(abs(mabs)>mmax)
+        throw invalid_argument("Magnetic moment exploding");
     mabs_old = mabs;
     theta_old = theta;
     phi_old = phi;
