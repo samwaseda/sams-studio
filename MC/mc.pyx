@@ -8,7 +8,7 @@ cdef class MC:
     cdef MCcpp c_mc
     cdef readonly int number_of_atoms
 
-    def __cinit__(self, structure):
+    def __cinit__(self, structure, me=None):
         self.number_of_atoms = len(structure)
         A = np.array(structure.A)
         thermodynamic_integration = False
@@ -18,11 +18,13 @@ cdef class MC:
         J = np.array(structure.J)
         neigh = np.array(structure.neigh)
         if thermodynamic_integration:
-            me = np.arange(len(structure))[np.newaxis, :, np.newaxis]*np.ones_like(neigh)
+            if me is None:
+                me = np.arange(len(structure))[np.newaxis, :, np.newaxis]*np.ones_like(neigh)
             if len(A[0])!=len(structure) or len(B[0])!=len(structure):
                 raise ValueError('Length of A or B is not the same as the structure length')
         else:
-            me = np.arange(len(structure))[:, np.newaxis]*np.ones_like(neigh)
+            if me is None:
+                me = np.arange(len(structure))[:, np.newaxis]*np.ones_like(neigh)
             if len(A)!=len(structure) or len(B)!=len(structure):
                 raise ValueError('Length of A or B is not the same as the structure length')
         if np.min(B)<0:
