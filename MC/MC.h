@@ -69,7 +69,7 @@ class average_energy
 
 class MC{
     private:
-        int acc, MC_count, N_tot, thermodynamic_integration_flag;
+        int acc, MC_count, n_tot, thermodynamic_integration_flag;
         clock_t steps_per_second;
         bool debug_mode;
         double kB, lambda;
@@ -81,7 +81,6 @@ class MC{
         MC();
         ~MC();
         void create_atoms(vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
-        void append_parameters(vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
         void activate_debug();
         void run(double, int);
         void set_lambda(double);
@@ -95,6 +94,7 @@ class MC{
         double get_mean_energy(int);
         double get_energy_variance(int);
         double get_steps_per_second();
+		int get_number_of_atoms();
         void set_magnitude(vector<double>, vector<double>, vector<double>);
         void reset();
 };
