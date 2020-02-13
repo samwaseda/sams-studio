@@ -1,1 +1,418 @@
-#error Do not use this file, it is the result of a failed Cython compilation.
+#include "MC.h"
+
+using namespace std;
+
+double zufall(){
+    return 1.0-2.0*(rand()/(double)RAND_MAX);
+}
+
+double square(double xxx){ return xxx*xxx; }
+double quartic(double xxx){ return square(xxx)*square(xxx); }
+double sextic(double xxx){ return quartic(xxx)*square(xxx); }
+double octic(double xxx){ return quartic(xxx)*quartic(xxx); }
+double decic(double xxx){ return sextic(xxx)*quartic(xxx); }
+
+double J_linear(double *m_one, double *m_two, double *m_three=NULL){
+    if (m_three!=NULL)
+        return m_one[0]*(m_two[0]-m_three[0])+m_one[1]*(m_two[1]-m_three[1])+m_one[2]*(m_two[2]-m_three[2]);
+    else
+        return m_one[0]*m_two[0]+m_one[1]*m_two[1]+m_one[2]*m_two[2];
+}
+double J_square(double *m_one, double *m_two, double *m_three=NULL){
+    if (m_three!=NULL)
+        return square(J_linear(m_one, m_two))-square(J_linear(m_one, m_three));
+    else
+        return square(J_linear(m_one, m_two));
+}
+
+Atom::Atom() : mmax(5), acc(0), count(0), debug(false)
+{
+    m = new double[3];
+    m_old = new double[3];
+    mabs = 1;
+    phi = 0;
+    theta = 0;
+    set_magnitude(0.1, 0.1, 0.1);
+    m[0] = mabs*cos(phi)*sin(theta);
+    m[1] = mabs*sin(phi)*sin(theta);
+    m[2] = mabs*cos(theta);
+    update_flag(false);
+}
+
+void Atom::update_flag(bool ff=false){
+    for(int i=0; i<2; i++)
+    {
+        E_uptodate[i] = ff;
+        dE_uptodate[i] = ff;
+    }
+}
+
+void Atom::activate_debug(){
+    debug = true;
+}
+
+float Atom::get_acceptance_ratio(){
+    if(count!=0)
+        return acc/(float) count;
+    return 0;
+}
+
+double Atom::E(bool force_compute=false, int index=0){
+    if(E_uptodate[index] && !force_compute)
+        return E_current;
+    E_current = 0;
+    for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
+        E_current -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, NULL);
+    E_current *= 0.5;
+    for(int i=0; i<int(landau_coeff[index].size()); i++)
+        E_current += landau_coeff[index].at(i)*landau_func[index].at(i)(mabs);
+    if(!debug)
+        E_uptodate[index] = true;
+    return E_current;
+}
+
+double Atom::dE(bool force_compute=false, int index=0){
+    if(dE_uptodate[index] && !force_compute)
+        return dE_current;
+    dE_current = 0;
+    count++;
+    acc++;
+    for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
+        dE_current -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, m_old);
+    for(int i=0; i<int(landau_coeff[index].size()); i++)
+        dE_current += landau_coeff[index].at(i)*(landau_func[index].at(i)(mabs)-landau_func[index].at(i)(mabs_old));
+    if(!debug)
+        dE_uptodate[index] = true;
+    return dE_current;
+}
+
+void Atom::set_m(double mabs_new, double theta_new, double phi_new){
+    update_flag(false);
+    if(abs(mabs)>mmax)
+        throw invalid_argument("Magnetic moment exploding");
+    mabs_old = mabs;
+    theta_old = theta;
+    phi_old = phi;
+    for(int i=0; i<3; i++)
+        m_old[i] = m[i];
+    mabs = mabs_new;
+    theta = theta_new;
+    phi = phi_new;
+    m[0] = mabs*cos(phi)*sin(theta);
+    m[1] = mabs*sin(phi)*sin(theta);
+    m[2] = mabs*cos(theta);
+}
+
+void Atom::revoke(){
+    acc--;
+    set_m(mabs_old, theta_old, phi_old);
+}
+
+void Atom::set_landau_coeff(double value, int deg, int index=0){
+    if(value==0)
+        return;
+    update_flag(false);
+	if(dm==0)
+		dm = 0.1;
+    landau_coeff[index].push_back(value);
+    switch(deg){
+        case 2:
+            landau_func[index].push_back(square);
+            break;
+        case 4:
+            landau_func[index].push_back(quartic);
+            break;
+        case 6:
+            landau_func[index].push_back(sextic);
+            break;
+        case 8:
+            landau_func[index].push_back(octic);
+            break;
+        case 10:
+            landau_func[index].push_back(decic);
+            break;
+        default:
+            throw invalid_argument("Longitudinal function not found");
+    }
+}
+
+void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0){
+    update_flag(false);
+    m_n[index].push_back(mm);
+    heisen_coeff[index].push_back(JJ);
+	if(dphi==0 && dtheta==0)
+	{
+		dphi = 0.1*2.0*M_PI;
+		dtheta = 0.1;
+	}
+    switch(deg){
+        case 1:
+            heisen_func[index].push_back(J_linear);
+            break;
+        case 2:
+            heisen_func[index].push_back(J_square);
+            break;
+        default:
+            throw invalid_argument("Pairwise interaction not found");
+    }
+}
+
+void Atom::clear_heisenberg_coeff(int index){
+    heisen_coeff[index].clear();
+    heisen_func[index].clear();
+    m_n[index].clear();
+}
+
+void Atom::clear_landau_coeff(int index){
+    landau_coeff[index].clear();
+    landau_func[index].clear();
+}
+
+void Atom::propose_new_state(){
+    double mabs_new = abs(mabs+dm*zufall());
+    double theta_new = cos(theta)+dtheta*zufall();
+    double phi_new = phi+dphi*zufall();
+    while(abs(theta_new)>1)
+        theta_new = cos(theta)+0.2*zufall();
+    theta_new = acos(theta_new);
+    set_m(mabs_new, theta_new, phi_new);
+}
+
+void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
+{
+    if(ddm<0 || ddphi<0 || ddtheta<0)
+        throw invalid_argument( "Magnitude cannot be a negative value" );
+    dm = ddm;
+    dphi = ddphi*2.0*M_PI;
+    dtheta = ddtheta;
+}
+
+Atom::~Atom(){
+    delete[] m_old;
+    delete[] m;
+}
+
+average_energy::average_energy(){ reset();}
+
+void average_energy::add(double E_in, bool total_energy=false, int index=0)
+{
+    if (E_in==0)
+        return;
+    if (total_energy)
+        E_sum[index] = E_in;
+    else
+        E_sum[index] += E_in;
+    EE[index] += E_sum[index];
+    EE_sq[index] += square(E_sum[index]);
+    NN[index] += 1;
+}
+
+double average_energy::E_mean(int index=0){
+    if(NN[index]>0)
+        return EE[index]/(double)NN[index];
+    else
+        return 0;
+}
+
+double average_energy::E_var(int index=0){
+    if(NN[index]>0)
+        return (EE_sq[index]-square(EE[index])/(double)NN[index])/(double)NN[index];
+    else
+        return 0;
+}
+
+void average_energy::reset()
+{
+    for(int i=0; i<2; i++)
+    {
+        EE[i] = 0;
+        NN[i] = 0;
+        E_sum[i] = 0;
+        EE_sq[i] = 0;
+    }
+}
+
+MC::MC(): thermodynamic_integration_flag(0), kB(8.6173305e-5)
+{
+    reset();
+}
+
+void MC::set_lambda(double lambda_in)
+{
+    if(lambda_in<0 || lambda_in>1)
+        throw invalid_argument( "Lambda must be between 0 and 1" );
+    if(thermodynamic_integration_flag%2==0)
+        thermodynamic_integration_flag++;
+    lambda = lambda_in;
+}
+
+void MC::activate_debug()
+{
+    debug_mode = true;
+}
+
+void MC::set_landau_coeff(vector<double> coeff, int deg, int index=0)
+{
+    if(int(coeff.size())!=n_tot)
+        throw invalid_argument("Number of coefficients is not the same as the number of atoms");
+    for(int i=0; i<n_tot; i++)
+        atom[i].set_landau_coeff(coeff[i], deg, index);
+}
+
+void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0)
+{
+    if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
+        throw invalid_argument("Number of coefficients is not the same as the indices");
+    for(int i=0; i<int(coeff.size()); i++)
+        atom[me.at(i)].set_heisenberg_coeff(atom[neigh.at(i)].m, coeff.at(i), deg, index);
+}
+
+void MC::create_atoms(int number_of_atoms)
+{
+
+	if(number_of_atoms<=0)
+		throw invalid_argument("Number of atoms has to be a positive integer");
+	if(number_of_atoms!=0)
+		throw invalid_argument("You cannot change the number of atoms during the simulation");
+    n_tot = number_of_atoms;
+    atom = new Atom[n_tot];
+}
+
+int MC::get_number_of_atoms(){
+	if (n_tot==0)
+		throw invalid_argument("Atoms not created yet");
+	return n_tot;
+}
+
+void MC::clear_landau_coeff(int index=0)
+{
+    for(int i=0; i<n_tot; i++)
+        atom[i].clear_landau_coeff(index);
+}
+
+void MC::clear_heisenberg_coeff(int index=0)
+{
+    for(int i=0; i<n_tot; i++)
+        atom[i].clear_heisenberg_coeff(index);
+}
+
+bool MC::thermodynamic_integration(){
+    switch (thermodynamic_integration_flag){
+        case 0:
+            return false;
+        case 1:
+            throw invalid_argument("Parameters not set for lambda=1");
+        case 2:
+            throw invalid_argument("Lambda parameter not set");
+        case 3:
+            return true;
+        default:
+            throw invalid_argument("Something went wrong");
+    }
+}
+
+void MC::run(double T_in, int number_of_iterations=1){
+    double kBT = kB*T_in, dEE_tot[2], dE, EE_tot[2];
+    clock_t begin = clock();
+    int ID_rand;
+    EE_tot[0] = get_energy(0);
+    E_tot.add(EE_tot[0], true, 0);
+    if(thermodynamic_integration())
+    {
+        EE_tot[1] = get_energy(1);
+        E_tot.add(EE_tot[1], true, 1);
+    }
+    for(int iter=0; iter<number_of_iterations; iter++)
+    {
+        for(int i=0; i<2; i++)
+        {
+            dEE_tot[i] = 0;
+            EE_tot[i] = 0;
+        }
+        for(int i=0; debug_mode && i<n_tot; i++)
+            EE_tot[0] -= atom[i].E(true);
+        for(int i=0; i<n_tot; i++)
+        {
+            MC_count++;
+            ID_rand = rand()%n_tot;
+            atom[ID_rand].propose_new_state();
+            dE = atom[ID_rand].dE();
+            if(thermodynamic_integration())
+                dE = (1-lambda)*dE+lambda*atom[ID_rand].dE(false, 1);
+            if(dE<0 || (kBT>0)*exp(-dE/kBT)>rand()/(double)RAND_MAX)
+            {
+                acc++;
+                dEE_tot[0] += atom[ID_rand].dE(false, 0);
+                if(thermodynamic_integration())
+                    dEE_tot[1] += atom[ID_rand].dE(false, 1);
+            }
+            else
+                atom[ID_rand].revoke();
+        }
+        if(debug_mode)
+        {
+            EE_tot[0] -= get_energy(0);
+            if(abs(EE_tot[0]-dEE_tot[0])>1.0e-6*n_tot)
+                throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[0])+" "+to_string(dEE_tot[0]) );
+        }
+        E_tot.add(dEE_tot[0]);
+        if(thermodynamic_integration())
+            E_tot.add(dEE_tot[1], false, 1);
+    }
+    steps_per_second = n_tot*number_of_iterations/(double)(clock()-begin)*CLOCKS_PER_SEC;
+}
+
+double MC::get_steps_per_second(){
+    return (double)steps_per_second;
+}
+
+vector<double> MC::get_magnetic_moments(){
+    vector<double> m;
+    m.resize(n_tot*3);
+    for(int i_atom=0; i_atom<n_tot; i_atom++)
+        for(int ix=0; ix<3; ix++)
+            m.at(i_atom*3+ix) = atom[i_atom].m[ix];
+    return m;
+}
+
+double MC::get_energy(int index=0){
+    double EE=0;
+    for(int i=0; i<n_tot; i++)
+        EE += atom[i].E(true, index);
+    return EE;
+}
+
+double MC::get_mean_energy(int index=0){
+    return E_tot.E_mean(index);
+}
+
+double MC::get_energy_variance(int index=0){
+    return E_tot.E_var(index);
+}
+
+double MC::get_acceptance_ratio(){
+    if(MC_count==0)
+        return 0;
+    return acc/(double)MC_count;
+}
+
+void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dtheta)
+{
+    if(int(dm.size())!=int(dphi.size()) || int(dphi.size())!=int(dtheta.size()) || n_tot!=int(dm.size()))
+        throw invalid_argument("Length of vectors not consistent");
+    for(int i=0; i<n_tot; i++)
+        atom[i].set_magnitude(dm[i], dphi[i], dtheta[i]);
+}
+
+void MC::reset()
+{
+    acc = 0;
+    MC_count = 0;
+    E_tot.reset();
+}
+
+MC::~MC()
+{
+    delete [] atom;
+}
+

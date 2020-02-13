@@ -80,7 +80,7 @@ class MC{
     public:
         MC();
         ~MC();
-        void create_atoms(vector<double>, vector<double>, vector<int>, vector<int>, vector<double>);
+        void create_atoms(int);
         void activate_debug();
         void run(double, int);
         void set_lambda(double);
