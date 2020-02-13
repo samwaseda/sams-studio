@@ -32,7 +32,7 @@ Atom::Atom() : mmax(5), acc(0), count(0), debug(false)
     mabs = 1;
     phi = 0;
     theta = 0;
-    set_magnitude(0.1, 0.1, 0.1);
+    set_magnitude(0, 0, 0);
     m[0] = mabs*cos(phi)*sin(theta);
     m[1] = mabs*sin(phi)*sin(theta);
     m[2] = mabs*cos(theta);
@@ -137,6 +137,8 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
 }
 
 void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0){
+    if(JJ==0)
+        return;
     update_flag(false);
     m_n[index].push_back(mm);
     heisen_coeff[index].push_back(JJ);
@@ -232,7 +234,7 @@ void average_energy::reset()
     }
 }
 
-MC::MC(): thermodynamic_integration_flag(0), kB(8.6173305e-5)
+MC::MC(): n_tot(0), thermodynamic_integration_flag(0), kB(8.6173305e-5)
 {
     reset();
 }
@@ -272,7 +274,7 @@ void MC::create_atoms(int number_of_atoms)
 
 	if(number_of_atoms<=0)
 		throw invalid_argument("Number of atoms has to be a positive integer");
-	if(number_of_atoms!=0)
+	if(n_tot!=0)
 		throw invalid_argument("You cannot change the number of atoms during the simulation");
     n_tot = number_of_atoms;
     atom = new Atom[n_tot];

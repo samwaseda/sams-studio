@@ -16,7 +16,7 @@ cdef class MC:
             coeff = np.tile(coeff, self.c_mc.get_number_of_atoms())
         self.c_mc.set_landau_coeff(coeff, deg, index)
 
-    def set_heisenberg_coeff(self, coeff, me, neigh, deg, index=0):
+    def set_heisenberg_coeff(self, coeff, me, neigh, deg=1, index=0):
         coeff = np.array([coeff]).flatten()
         me = np.array(me).flatten()
         neigh = np.array(neigh).flatten()
