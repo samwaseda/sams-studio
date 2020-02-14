@@ -51,8 +51,10 @@ cdef class MC:
                 Heisenberg term is given by: -sum_ij coeff_ij*(m_i*m_j)^deg. Beware of the negative sign.
         """
         if i is None and j is None:
-            if len(np.array(coeff).shape)!=2:
-                raise ValueError('If i and j are not specified, coeff has to be a 2d tensor')
+            n = self.c_mc.get_number_of_atoms()
+            if np.array(coeff).shape!=(n, n)
+                raise ValueError('If i and j are not specified, coeff has to be a 2d tensor with the length equal'
+                                 'to the number of atoms in each direction.')
             i,j = np.where(coeff!=0)
             coeff = coeff[coeff!=0]
         coeff = np.array([coeff]).flatten()
