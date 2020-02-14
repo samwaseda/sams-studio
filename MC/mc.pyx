@@ -107,11 +107,15 @@ cdef class MC:
             self.c_mc.reset()
         self.c_mc.run(temperature, number_of_iterations)
 
-    def get_acceptance_ratio(self):
+    def get_acceptance_ratio(self, individual=False):
         """
+            Args:
+                individual (bool): If true, an array containing each acceptance ratio is returned
             Returns:
                 Acceptance ratio since the last reset (s. reset())
         """
+        if individual:
+            return self.c_mc.get_acceptance_ratios()
         return self.c_mc.get_acceptance_ratio()
 
     def get_energy(self, index=0):

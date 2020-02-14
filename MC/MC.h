@@ -30,7 +30,7 @@ class Atom{
 		double *m;
 		Atom();
 		~Atom();
-		float get_acceptance_ratio();
+		double get_acceptance_ratio();
 		double E(int, bool);	// index, force_compute
 		double dE(int, bool);   // index, force_compute
 		void revoke();
@@ -79,6 +79,7 @@ class MC{
 		void clear_landau_coeff(int);
 		void clear_heisenberg_coeff(int);
 		double get_acceptance_ratio();
+		vector<double> get_acceptance_ratios();
 		double get_energy(int);
 		double get_mean_energy(int);
 		double get_energy_variance(int);

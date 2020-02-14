@@ -386,6 +386,13 @@ double MC::get_acceptance_ratio(){
     if(MC_count==0)
         return 0;
     return acc/(double)MC_count;
+} 
+
+vector<double> MC::get_acceptance_ratios(){
+	vector<double> v(n_tot);
+	for(int i=0; i<n_tot; i++)
+		v.at(i) = atom[i].get_acceptance_ratio();
+	return v;
 }
 
 void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dtheta)
