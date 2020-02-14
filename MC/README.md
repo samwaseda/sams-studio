@@ -26,3 +26,5 @@ mc.run(temperature=300, number_of_iterations=1000)
 ```
 
 The results can be analysed by attributes like `get_mean_energy()` or `get_magnetic_moments`.
+
+For more info, take a look at `mc.pyx`.
