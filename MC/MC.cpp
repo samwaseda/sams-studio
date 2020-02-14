@@ -57,33 +57,33 @@ float Atom::get_acceptance_ratio(){
     return 0;
 }
 
-double Atom::E(bool force_compute=false, int index=0){
+double Atom::E(int index=0, bool force_compute=false){
     if(E_uptodate[index] && !force_compute)
-        return E_current;
-    E_current = 0;
+        return E_current[index];
+    E_current[index] = 0;
     for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        E_current -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, NULL);
-    E_current *= 0.5;
+        E_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, NULL);
+    E_current[index] *= 0.5;
     for(int i=0; i<int(landau_coeff[index].size()); i++)
-        E_current += landau_coeff[index].at(i)*landau_func[index].at(i)(mabs);
+        E_current[index] += landau_coeff[index].at(i)*landau_func[index].at(i)(mabs);
     if(!debug)
         E_uptodate[index] = true;
-    return E_current;
+    return E_current[index];
 }
 
-double Atom::dE(bool force_compute=false, int index=0){
+double Atom::dE(int index=0, bool force_compute=false){
     if(dE_uptodate[index] && !force_compute)
-        return dE_current;
-    dE_current = 0;
+        return dE_current[index];
+    dE_current[index] = 0;
     count++;
     acc++;
     for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        dE_current -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, m_old);
+        dE_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, m_old);
     for(int i=0; i<int(landau_coeff[index].size()); i++)
-        dE_current += landau_coeff[index].at(i)*(landau_func[index].at(i)(mabs)-landau_func[index].at(i)(mabs_old));
+        dE_current[index] += landau_coeff[index].at(i)*(landau_func[index].at(i)(mabs)-landau_func[index].at(i)(mabs_old));
     if(!debug)
         dE_uptodate[index] = true;
-    return dE_current;
+    return dE_current[index];
 }
 
 void Atom::set_m(double mabs_new, double theta_new, double phi_new){
@@ -332,7 +332,7 @@ void MC::run(double T_in, int number_of_iterations=1){
             EE_tot[i] = 0;
         }
         for(int i=0; debug_mode && i<n_tot; i++)
-            EE_tot[0] -= atom[i].E(true);
+            EE_tot[0] -= atom[i].E(0, true);
         for(int i=0; i<n_tot; i++)
         {
             MC_count++;
@@ -340,13 +340,13 @@ void MC::run(double T_in, int number_of_iterations=1){
             atom[ID_rand].propose_new_state();
             dE = atom[ID_rand].dE();
             if(thermodynamic_integration())
-                dE = (1-lambda)*dE+lambda*atom[ID_rand].dE(false, 1);
+                dE = (1-lambda)*dE+lambda*atom[ID_rand].dE(1);
             if(dE<0 || (kBT>0)*exp(-dE/kBT)>rand()/(double)RAND_MAX)
             {
                 acc++;
-                dEE_tot[0] += atom[ID_rand].dE(false, 0);
+                dEE_tot[0] += atom[ID_rand].dE();
                 if(thermodynamic_integration())
-                    dEE_tot[1] += atom[ID_rand].dE(false, 1);
+                    dEE_tot[1] += atom[ID_rand].dE(1);
             }
             else
                 atom[ID_rand].revoke();
@@ -380,7 +380,7 @@ vector<double> MC::get_magnetic_moments(){
 double MC::get_energy(int index=0){
     double EE=0;
     for(int i=0; i<n_tot; i++)
-        EE += atom[i].E(true, index);
+        EE += atom[i].E(index, true);
     return EE;
 }
 

@@ -28,7 +28,7 @@ double J_square(double*, double*, double*);
 
 class Atom{
     private:
-        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, E_current, dE_current, dm, dphi, dtheta, mmax;
+        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, E_current[2], dE_current[2], dm, dphi, dtheta, mmax;
         vector<double> heisen_coeff[2], landau_coeff[2];
         vector<double (*)(double)> landau_func[2];
         vector<double (*)(double*, double*, double*)> heisen_func[2];
@@ -42,8 +42,8 @@ class Atom{
         Atom();
         ~Atom();
         float get_acceptance_ratio();
-        double E(bool, int);    // force_compute, index
-        double dE(bool, int);   // force_compute, index
+        double E(int, bool);    // index, force_compute
+        double dE(int, bool);   // index, force_compute
         void revoke();
         void set_landau_coeff(double, int, int);
         void set_heisenberg_coeff(double*, double, int, int);
