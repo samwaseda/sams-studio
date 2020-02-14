@@ -15,12 +15,10 @@ import numpy as np
 from mc import MC
 
 J = 0.1 # eV
-neighbors = structure.get_neighbors(num_neighbors=8) # 8 NN atoms in bcc
-neighbor_indices = neighbors.indices
-my_indices = np.arange(len(structure))[:, np.newaxis]*np.ones_like(neighbor_indices)
+first_shell_tensor = structure.get_shell_matrix(1)
 
 mc = MC(len(structure))
-mc.set_heisenberg_coeff(J, my_indices, neighbor_indices)
+mc.set_heisenberg_coeff(J*first_shell_tensor)
 
 mc.run(temperature=300, number_of_iterations=1000)
 ```
