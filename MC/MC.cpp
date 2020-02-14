@@ -234,7 +234,7 @@ void average_energy::reset()
     }
 }
 
-MC::MC(): n_tot(0), thermodynamic_integration_flag(0), kB(8.6173305e-5)
+MC::MC(): n_tot(0), kB(8.6173305e-5), lambda(-1)
 {
     reset();
 }
@@ -243,8 +243,6 @@ void MC::set_lambda(double lambda_in)
 {
     if(lambda_in<0 || lambda_in>1)
         throw invalid_argument( "Lambda must be between 0 and 1" );
-    if(thermodynamic_integration_flag%2==0)
-        thermodynamic_integration_flag++;
     lambda = lambda_in;
 }
 
@@ -299,18 +297,9 @@ void MC::clear_heisenberg_coeff(int index=0)
 }
 
 bool MC::thermodynamic_integration(){
-    switch (thermodynamic_integration_flag){
-        case 0:
-            return false;
-        case 1:
-            throw invalid_argument("Parameters not set for lambda=1");
-        case 2:
-            throw invalid_argument("Lambda parameter not set");
-        case 3:
-            return true;
-        default:
-            throw invalid_argument("Something went wrong");
-    }
+    if(lambda>=0)
+        return true;
+    return false;
 }
 
 void MC::run(double T_in, int number_of_iterations=1){

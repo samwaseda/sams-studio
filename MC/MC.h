@@ -58,7 +58,7 @@ class average_energy
 
 class MC{
 	private:
-		int acc, MC_count, n_tot, thermodynamic_integration_flag;
+		int acc, MC_count, n_tot;
 		clock_t steps_per_second;
 		bool debug_mode;
 		double kB, lambda;
