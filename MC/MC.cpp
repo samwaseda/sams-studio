@@ -184,6 +184,8 @@ void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
 {
     if(ddm<0 || ddphi<0 || ddtheta<0)
         throw invalid_argument( "Magnitude cannot be a negative value" );
+	if(int(landau_coeff[0].size())+int(landau_coeff[1].size())==0 && ddm!=0)
+		throw invalid_argument("You cannot change moment magnitude without defining Landau coefficients");
     dm = ddm;
     dphi = ddphi*2.0*M_PI;
     dtheta = ddtheta;
