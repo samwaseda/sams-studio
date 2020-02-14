@@ -25,7 +25,7 @@ double J_square(double *m_one, double *m_two, double *m_three=NULL){
         return square(J_linear(m_one, m_two));
 }
 
-Atom::Atom() : mmax(5), acc(0), count(0), debug(false)
+Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
 {
     m = new double[3];
     m_old = new double[3];
