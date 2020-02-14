@@ -51,9 +51,9 @@ void Atom::activate_debug(){
     debug = true;
 }
 
-float Atom::get_acceptance_ratio(){
+double Atom::get_acceptance_ratio(){
     if(count!=0)
-        return acc/(float) count;
+        return acc/(double) count;
     return 0;
 }
 
