@@ -234,7 +234,7 @@ void average_energy::reset()
     }
 }
 
-MC::MC(): n_tot(0), kB(8.6173305e-5), lambda(-1)
+MC::MC(): n_tot(0), debug_mode(false), kB(8.6173305e-5), lambda(-1)
 {
     reset();
 }
