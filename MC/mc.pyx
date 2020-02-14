@@ -35,12 +35,13 @@ cdef class MC:
                              'corresponding to the number of atoms in the box')
         self.c_mc.set_landau_coeff(coeff, deg, index)
 
-    def set_heisenberg_coeff(self, coeff, me, neigh, deg=1, index=0):
+    def set_heisenberg_coeff(self, coeff, i=None, j=None, deg=1, index=0):
         """
             Args:
                 coeff (float/list/ndarray): Heisenberg coefficient. If a single number is given,
                                             the same parameter is applied to all the pairs defined
-                                            in me and neigh.
+                                            in me and neigh. Instead of giving me and neigh, you can
+                                            also give a n_atom x n_atom tensor.
                 me (list/ndarray): list of indices i (s. definition in the comment)
                 neigh (list/ndarray): list of indices j (s. definition in the comment)
                 deg (int): polynomial degree
@@ -49,14 +50,19 @@ cdef class MC:
             Comment:
                 Heisenberg term is given by: -sum_ij coeff_ij*(m_i*m_j)^deg. Beware of the negative sign.
         """
+        if i is None and j is None:
+            if len(np.array(coeff).shape)!=2:
+                raise ValueError('If i and j are not specified, coeff has to be a 2d tensor')
+            i,j = np.where(coeff!=0)
+            coeff = coeff[coeff!=0]
         coeff = np.array([coeff]).flatten()
-        me = np.array(me).flatten()
-        neigh = np.array(neigh).flatten()
+        i = np.array(i).flatten()
+        j = np.array(j).flatten()
         if len(coeff)==1:
-            coeff = np.tile(coeff, len(me))
-        if len(coeff)!=len(me) or len(me)!=len(neigh):
+            coeff = np.tile(coeff, len(i))
+        if len(coeff)!=len(i) or len(i)!=len(j):
             raise ValueError('Length of vectors not the same')
-        self.c_mc.set_heisenberg_coeff(coeff, me, neigh, deg, index)
+        self.c_mc.set_heisenberg_coeff(coeff, i, j, deg, index)
 
     def clear_heisenberg_coeff(self, index=0):
         """
