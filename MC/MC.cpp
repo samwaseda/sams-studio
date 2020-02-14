@@ -318,7 +318,8 @@ void MC::run(double T_in, int number_of_iterations=1){
         for(int i=0; i<2; i++)
         {
             dEE_tot[i] = 0;
-            EE_tot[i] = 0;
+			if (debug)
+				EE_tot[i] = get_energy(i);
         }
         for(int i=0; i<n_tot; i++)
         {
@@ -338,12 +339,12 @@ void MC::run(double T_in, int number_of_iterations=1){
             else
                 atom[ID_rand].revoke();
         }
-        if(debug_mode)
-        {
-            EE_tot[0] -= get_energy(0);
-            if(abs(EE_tot[0]-dEE_tot[0])>1.0e-6*n_tot)
-                throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[0])+" "+to_string(dEE_tot[0]) );
-        }
+		for(int i=0; debug && i<2; i++)
+		{
+			EE_tot[i] -= get_energy(i);
+			if(abs(EE_tot[i]-dEE_tot[i])>1.0e-6*n_tot)
+				throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[i])+" "+to_string(dEE_tot[i]) );
+		}
         E_tot.add(dEE_tot[0]);
         if(thermodynamic_integration())
             E_tot.add(dEE_tot[1], false, 1);
