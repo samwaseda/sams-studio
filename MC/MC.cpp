@@ -319,7 +319,7 @@ void MC::run(double T_in, int number_of_iterations=1){
         {
             dEE_tot[i] = 0;
 			if (debug_mode)
-				EE_tot[i] -= get_energy(i);
+				EE_tot[i] = -get_energy(i);
         }
         for(int i=0; i<n_tot; i++)
         {
