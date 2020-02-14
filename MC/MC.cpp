@@ -318,7 +318,7 @@ void MC::run(double T_in, int number_of_iterations=1){
         for(int i=0; i<2; i++)
         {
             dEE_tot[i] = 0;
-			if (debug)
+			if (debug_mode)
 				EE_tot[i] = get_energy(i);
         }
         for(int i=0; i<n_tot; i++)
@@ -339,7 +339,7 @@ void MC::run(double T_in, int number_of_iterations=1){
             else
                 atom[ID_rand].revoke();
         }
-		for(int i=0; debug && i<2; i++)
+		for(int i=0; debug_mode && i<2; i++)
 		{
 			EE_tot[i] -= get_energy(i);
 			if(abs(EE_tot[i]-dEE_tot[i])>1.0e-6*n_tot)
