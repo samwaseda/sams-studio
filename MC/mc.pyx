@@ -8,9 +8,19 @@ cdef class MC:
     cdef MCcpp c_mc
 
     def __cinit__(self, number_of_atoms):
+        """
+        args:
+            number_of_atoms (int): number of atoms
+        """
         self.c_mc.create_atoms(number_of_atoms)
 
     def set_landau_coeff(self, coeff, deg, index=0):
+        """
+            args:
+                coeff (double): Coefficient to the Landau term
+                deg (int): Polynomial degree (usually an even number)
+                index (int): Potential index for thermodynamic integration (0 or 1)
+        """
         coeff = np.array([coeff]).flatten()
         if len(coeff)==1:
             coeff = np.tile(coeff, self.c_mc.get_number_of_atoms())
