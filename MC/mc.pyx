@@ -180,3 +180,8 @@ cdef class MC:
             dtheta = np.array(self.c_mc.get_number_of_atoms()*dtheta.tolist())
         self.c_mc.set_magnitude(dm, dphi, dtheta)
 
+    def activate_debug(self):
+        """
+            Activate debug mode (not so helpful though...)
+        """
+        self.c_mc.activate_debug()

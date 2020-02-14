@@ -12,6 +12,7 @@ cdef extern from "MC.h":
         void clear_landau_coeff(int) except +
         void clear_heisenberg_coeff(int) except +
         void run(double, int) except +
+        void activate_debug()
         vector[double] get_magnetic_moments()
         double get_acceptance_ratio()
         double get_energy(int)
