@@ -115,7 +115,7 @@ cdef class MC:
                 Acceptance ratio since the last reset (s. reset())
         """
         if individual:
-            return self.c_mc.get_acceptance_ratios()
+            return np.array(self.c_mc.get_acceptance_ratios())
         return self.c_mc.get_acceptance_ratio()
 
     def get_energy(self, index=0):
