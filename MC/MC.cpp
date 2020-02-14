@@ -320,8 +320,6 @@ void MC::run(double T_in, int number_of_iterations=1){
             dEE_tot[i] = 0;
             EE_tot[i] = 0;
         }
-        for(int i=0; debug_mode && i<n_tot; i++)
-            EE_tot[0] -= atom[i].E(0, true);
         for(int i=0; i<n_tot; i++)
         {
             MC_count++;
