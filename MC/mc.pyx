@@ -30,9 +30,9 @@ cdef class MC:
         coeff = np.array([coeff]).flatten()
         if len(coeff)==1:
             coeff = np.tile(coeff, self.c_mc.get_number_of_atoms())
-        if len(coeff)!=self.get_number_of_atoms():
-            raise ValueError('coeff has to be a single number or a list of length
-                              corresponding to the number of atoms in the box')
+        if len(coeff)!=self.c_mc.get_number_of_atoms():
+            raise ValueError('coeff has to be a single number or a list of length'
+                             'corresponding to the number of atoms in the box')
         self.c_mc.set_landau_coeff(coeff, deg, index)
 
     def set_heisenberg_coeff(self, coeff, me, neigh, deg=1, index=0):

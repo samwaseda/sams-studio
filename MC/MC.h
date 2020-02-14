@@ -1,17 +1,7 @@
 #ifndef MC_H
 #define MC_H
 
-#include<iostream>
-#include<cmath>
-#include<cstdlib>
-#include<cstdio>
-#include<string>
-#include<iomanip>
-#include <stdexcept>
-#include<ctime>
 #include<random>
-#include<vector>
-#include<algorithm>
 
 using namespace std;
 
