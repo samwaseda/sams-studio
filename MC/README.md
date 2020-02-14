@@ -14,8 +14,8 @@ Suppose we have a bcc Fe system created by [pyiron](http://github.com/pyiron/pyi
 import numpy as np
 from mc import MC
 
-J = 0.1
-neighbors = structure.get_neighbors(num_neighbors=8) # 8 NN atoms
+J = 0.1 # eV
+neighbors = structure.get_neighbors(num_neighbors=8) # 8 NN atoms in bcc
 neighbor_indices = neighbors.indices
 my_indices = np.arange(len(structure))[:, np.newaxis]*np.ones_like(neighbor_indices)
 
