@@ -45,6 +45,7 @@ class Ridge{
         void raw(int);
         void conjugate_gradient(int);
         void gradient_descent(int, double, double);
+        void fixed_descent(int, double);
         void reset_increment();
         void set_lambda(vector<double>);
         vector<double> get_coeff();

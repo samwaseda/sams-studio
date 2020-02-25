@@ -333,6 +333,20 @@ void Ridge::gradient_descent(int max_cycle, double prefactor, double damper=1.0)
     }
 }
 
+void Ridge::fixed_descent(int max_cycle, double displacement)
+{
+    VectorXd dchi_dlambda = VectorXd::Zero(n_dim);
+    for(int i_cycle=0; i_cycle<max_cycle; i_cycle++)
+    {
+        dchi_dlambda = dchi();
+        for(int i_lambda=0; i_lambda<lambda.size(); i_lambda++)
+            lambda -= displacement*((dchi_dlambda[i]>0)-(dchi_dlambda[i]<0));
+        chi_training();
+        if(lambda.maxCoeff()>lambda_tol || lambda.minCoeff()<-lambda_tol)
+            i_cycle = max_cycle;
+    }
+}
+
 void Ridge::conjugate_gradient(int max_cycle){
     VectorXd r_cg = VectorXd::Zero(n_dim);
     VectorXd p_cg = VectorXd::Zero(n_dim);
@@ -365,27 +379,27 @@ void Ridge::conjugate_gradient(int max_cycle){
 }
 
 
-vector<double> Ridge::get_coeff()
-{
-        chi(false);
-        vector<double> vec(coeff.begin(), coeff.end());
-        return vec;
-}
+    vector<double> Ridge::get_coeff()
+    {
+            chi(false);
+            vector<double> vec(coeff.begin(), coeff.end());
+            return vec;
+    }
 
-vector<double> Ridge::get_lambda()
-{
-        vector<double> vec(lambda.begin(), lambda.end());
-        return vec;
-}
+    vector<double> Ridge::get_lambda()
+    {
+            vector<double> vec(lambda.begin(), lambda.end());
+            return vec;
+    }
 
-vector<double> Ridge::get_derivative(){
-    VectorXd d = dchi();
-    vector<double> v(d.begin(), d.end());
-    return v;
-}
+    vector<double> Ridge::get_derivative(){
+        VectorXd d = dchi();
+        vector<double> v(d.begin(), d.end());
+        return v;
+    }
 
-vector<double> Ridge::get_hessian(){
-    VectorXd ddchi_ddlambda = ddchi();
-    vector<double> v(ddchi_ddlambda.data(), ddchi_ddlambda.data() + ddchi_ddlambda.rows() * ddchi_ddlambda.cols());
-    return v;
-}
+    vector<double> Ridge::get_hessian(){
+        VectorXd ddchi_ddlambda = ddchi();
+        vector<double> v(ddchi_ddlambda.data(), ddchi_ddlambda.data() + ddchi_ddlambda.rows() * ddchi_ddlambda.cols());
+        return v;
+    }
