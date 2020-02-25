@@ -340,7 +340,7 @@ void Ridge::fixed_descent(int max_cycle, double displacement)
     {
         dchi_dlambda = dchi();
         for(int i_lambda=0; i_lambda<lambda.size(); i_lambda++)
-            lambda -= displacement*((dchi_dlambda[i]>0)-(dchi_dlambda[i]<0));
+            lambda[i_lambda] -= displacement*((dchi_dlambda[i_lambda]>0)-(dchi_dlambda[i_lambda]<0));
         chi_training();
         if(lambda.maxCoeff()>lambda_tol || lambda.minCoeff()<-lambda_tol)
             i_cycle = max_cycle;
