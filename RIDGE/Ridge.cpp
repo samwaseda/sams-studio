@@ -326,15 +326,15 @@ void Ridge::gradient_descent(int max_cycle, double prefactor, double max_descent
     if (max_descent<0)
         throw invalid_argument("max_descent has to be a positive number");
     if (prefactor<=0)
-        throw invalid_argument("prefactor>0")
+        throw invalid_argument("prefactor>0");
     VectorXd dchi_dlambda = VectorXd::Zero(n_dim);
     for(int i_cycle=0; i_cycle<max_cycle; i_cycle++)
     {
         dchi_dlambda = dchi();
         for(int i_lambda=0; max_descent>0 && i_lambda<lambda.size(); i_lambda++)
         {
-            dchi_dlambda[i_lambda] = exp(dchi_dlambda[i_lambda]/max_descent)
-            dchi_dlambda[i_lambda] = max_descent*(dchi_dlambda[i_lambda]-1)/(dchi_dlambda[i_lambda]+1)
+            dchi_dlambda[i_lambda] = exp(dchi_dlambda[i_lambda]/max_descent);
+            dchi_dlambda[i_lambda] = max_descent*(dchi_dlambda[i_lambda]-1)/(dchi_dlambda[i_lambda]+1);
         }
         lambda -= prefactor*dchi_dlambda;
         chi_training();
