@@ -335,6 +335,8 @@ void Ridge::gradient_descent(int max_cycle, double prefactor, double damper=1.0)
 
 void Ridge::fixed_descent(int max_cycle, double displacement)
 {
+    if(displacement<=0)
+        throw invalid_argument("Displacement must be a positive number");
     VectorXd dchi_dlambda = VectorXd::Zero(n_dim);
     for(int i_cycle=0; i_cycle<max_cycle; i_cycle++)
     {
