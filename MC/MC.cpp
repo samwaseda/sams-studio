@@ -26,14 +26,16 @@ double J_square(double *m_one, double *m_two, double *m_three=NULL){
         return square(J_linear(m_one, m_two));
 }
 
-double betrag(double *m){
-    return J_linear(m, m);
+double cross_prod_sq(double *m_one, double *m_two){
+    return (square(m_one[1]*m_two[2]-m_one[2]*m_two[1])
+           +square(m_one[2]*m_two[0]-m_one[0]*m_two[2])
+           +square(m_one[0]*m_two[1]-m_one[1]*m_two[0]));
 }
 
-double J_sine_square(double *m_one, double *m_two, double *m_three=NULL){
+double J_cross_prod(double *m_one, double *m_two, double *m_three=NULL){
     if (m_three==NULL)
-        return 1-J_square(m_one, m_two)/(betrag(m_one)*betrag(m_two));
-    return -(J_square(m_one, m_two)/betrag(m_two)-J_square(m_one, m_three)/betrag(m_three))/betrag(m_one);
+        return cross_prod_sq(m_one, m_two);
+    return cross_prod_sq(m_one, m_two)-cross_prod_sq(m_one, m_three);
 }
 
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
@@ -162,7 +164,7 @@ void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0, b
     {
         if(deg!=2)
             throw invalid_argument("Currently sine functions can be used only for degree 2");
-        heisen_func[index].push_back(J_sine_square);
+        heisen_func[index].push_back(J_cross_prod);
     }
     switch(deg){
         case 1:

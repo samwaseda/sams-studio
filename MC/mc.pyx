@@ -35,7 +35,7 @@ cdef class MC:
                              'corresponding to the number of atoms in the box')
         self.c_mc.set_landau_coeff(coeff, deg, index)
 
-    def set_heisenberg_coeff(self, coeff, i=None, j=None, deg=1, index=0, sine=False):
+    def set_heisenberg_coeff(self, coeff, i=None, j=None, deg=1, index=0, sine=0):
         """
             Args:
                 coeff (float/list/ndarray): Heisenberg coefficient. If a single number is given,

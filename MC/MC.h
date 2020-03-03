@@ -12,10 +12,9 @@ double quartic(double);
 double sextic(double);
 double octic(double);
 double decic(double);
-double betrag(double*);
 double J_linear(double*, double*, double*);
 double J_square(double*, double*, double*);
-double J_sine_square(double*, double*, double*);
+double J_cross_prod(double*, double*, double*);
 
 class Atom{
 	private:
