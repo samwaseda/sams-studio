@@ -278,12 +278,12 @@ void MC::set_landau_coeff(vector<double> coeff, int deg, int index=0)
         atom[i].set_landau_coeff(coeff[i], deg, index);
 }
 
-void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0)
+void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0, sine=false)
 {
     if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
         throw invalid_argument("Number of coefficients is not the same as the indices");
     for(int i=0; i<int(coeff.size()); i++)
-        atom[me.at(i)].set_heisenberg_coeff(atom[neigh.at(i)].m, coeff.at(i), deg, index);
+        atom[me.at(i)].set_heisenberg_coeff(atom[neigh.at(i)].m, coeff.at(i), deg, index, sine);
 }
 
 void MC::create_atoms(int number_of_atoms)
