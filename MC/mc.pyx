@@ -35,7 +35,7 @@ cdef class MC:
                              'corresponding to the number of atoms in the box')
         self.c_mc.set_landau_coeff(coeff, deg, index)
 
-    def set_heisenberg_coeff(self, coeff, i=None, j=None, deg=1, index=0):
+    def set_heisenberg_coeff(self, coeff, i=None, j=None, deg=1, index=0, sine=False):
         """
             Args:
                 coeff (float/list/ndarray): Heisenberg coefficient. If a single number is given,
@@ -64,7 +64,7 @@ cdef class MC:
             coeff = np.tile(coeff, len(i))
         if len(coeff)!=len(i) or len(i)!=len(j):
             raise ValueError('Length of vectors not the same')
-        self.c_mc.set_heisenberg_coeff(coeff, i, j, deg, index)
+        self.c_mc.set_heisenberg_coeff(coeff, i, j, deg, index, sine)
 
     def clear_heisenberg_coeff(self, index=0):
         """

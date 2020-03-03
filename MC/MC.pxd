@@ -8,7 +8,7 @@ cdef extern from "MC.h":
         MC() except +
         void create_atoms(int) except +
         void set_landau_coeff(vector[double], int, int) except +
-        void set_heisenberg_coeff(vector[double], vector[int], vector[int], int, int) except +
+        void set_heisenberg_coeff(vector[double], vector[int], vector[int], int, int, bool) except +
         void clear_landau_coeff(int) except +
         void clear_heisenberg_coeff(int) except +
         void run(double, int) except +

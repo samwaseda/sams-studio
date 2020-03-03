@@ -18,11 +18,22 @@ double J_linear(double *m_one, double *m_two, double *m_three=NULL){
     else
         return m_one[0]*m_two[0]+m_one[1]*m_two[1]+m_one[2]*m_two[2];
 }
+
 double J_square(double *m_one, double *m_two, double *m_three=NULL){
     if (m_three!=NULL)
         return square(J_linear(m_one, m_two))-square(J_linear(m_one, m_three));
     else
         return square(J_linear(m_one, m_two));
+}
+
+double betrag(double *m){
+    return J_linear(m, m);
+}
+
+double J_sine_square(double *m_one, double *m_two, double *m_three=NULL){
+    if (m_three==NULL)
+        return 1-J_square(m_one, m_two)/(betrag(m_one)*betrag(m_two));
+    return -(J_square(m_one, m_two)/betrag(m_two)-J_square(m_one, m_three)/betrag(m_three))/betrag(m_one);
 }
 
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
@@ -136,7 +147,7 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     }
 }
 
-void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0){
+void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0, bool sine=false){
     if(JJ==0)
         return;
     update_flag(false);
@@ -147,6 +158,12 @@ void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0){
 		dphi = 0.1*2.0*M_PI;
 		dtheta = 0.1;
 	}
+    if(sine)
+    {
+        if(deg!=2)
+            throw invalid_argument("Currently sine functions can be used only for degree 2");
+        heisen_func[index].push_back(J_sine_square);
+    }
     switch(deg){
         case 1:
             heisen_func[index].push_back(J_linear);

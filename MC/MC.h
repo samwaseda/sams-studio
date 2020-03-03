@@ -12,8 +12,10 @@ double quartic(double);
 double sextic(double);
 double octic(double);
 double decic(double);
+double betrag(double*);
 double J_linear(double*, double*, double*);
 double J_square(double*, double*, double*);
+double J_sine_square(double*, double*, double*);
 
 class Atom{
 	private:
@@ -35,7 +37,7 @@ class Atom{
 		double dE(int, bool);   // index, force_compute
 		void revoke();
 		void set_landau_coeff(double, int, int);
-		void set_heisenberg_coeff(double*, double, int, int);
+		void set_heisenberg_coeff(double*, double, int, int, bool);
 		void clear_landau_coeff(int);
 		void clear_heisenberg_coeff(int);
 		void activate_debug();
