@@ -103,6 +103,16 @@ cdef class MC:
         m = self.c_mc.get_magnetic_moments()
         return np.array(m).reshape(-1, 3)
 
+    def get_average_magnetization(self, vector=False):
+        """
+            Returns:
+                average magnetization value or vector
+        """
+        m = np.mean(self.get_magnetic_moments(), axis=0)
+        if vector:
+            return m
+        return np.linalg.norm(m)
+
     def run(self, temperature, number_of_iterations=1, reset=True):
         """
             Args:
