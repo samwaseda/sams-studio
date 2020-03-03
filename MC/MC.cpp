@@ -149,7 +149,7 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     }
 }
 
-void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0, bool sine=false){
+void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0){
     if(JJ==0)
         return;
     update_flag(false);
@@ -160,14 +160,6 @@ void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0, b
 		dphi = 0.1*2.0*M_PI;
 		dtheta = 0.1;
 	}
-    /*
-    if(sine)
-    {
-        if(deg!=2)
-            throw invalid_argument("Currently sine functions can be used only for degree 2");
-        heisen_func[index].push_back(J_cross_prod);
-    }
-    */
     switch(deg){
         case 1:
             heisen_func[index].push_back(J_linear);
@@ -192,7 +184,7 @@ void Atom::clear_landau_coeff(int index){
 }
 
 void Atom::propose_new_state(){
-    double mabs_new = abs(mabs+dm*zufall());
+    double mabs_new = mabs+dm*zufall();
     double theta_new = cos(theta)+dtheta*zufall();
     double phi_new = phi+dphi*zufall();
     while(abs(theta_new)>1)
@@ -282,12 +274,12 @@ void MC::set_landau_coeff(vector<double> coeff, int deg, int index=0)
         atom[i].set_landau_coeff(coeff[i], deg, index);
 }
 
-void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0, bool sine=false)
+void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0)
 {
     if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
         throw invalid_argument("Number of coefficients is not the same as the indices");
     for(int i=0; i<int(coeff.size()); i++)
-        atom[me.at(i)].set_heisenberg_coeff(atom[neigh.at(i)].m, coeff.at(i), deg, index, sine);
+        atom[me.at(i)].set_heisenberg_coeff(atom[neigh.at(i)].m, coeff.at(i), deg, index);
 }
 
 void MC::create_atoms(int number_of_atoms)
