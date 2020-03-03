@@ -14,7 +14,7 @@ cdef extern from "MC.h":
         void run(double, int) except +
         void activate_debug()
         vector[double] get_magnetic_moments()
-        void get_magnetic_moments(vector[double]) except +
+        void set_magnetic_moments(vector[double]) except +
         double get_acceptance_ratio()
         vector[double] get_acceptance_ratios()
         double get_energy(int)

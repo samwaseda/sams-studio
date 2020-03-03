@@ -392,11 +392,11 @@ vector<double> MC::get_magnetic_moments(){
 
 void MC::set_magnetic_moments(vector<double> m_in)
 {
-    if(int(m.size())!=3*n_tot)
+    if(int(m_in.size())!=3*n_tot)
         throw invalid_argument("Length of magnetic moments not correct");
     for(int i_atom=0; i_atom<n_tot; i_atom++)
         for(int ix=0; ix<3; ix++)
-             atom[i_atom].m[ix] = m_in.at(i_atom*3+ix)
+             atom[i_atom].m[ix] = m_in.at(i_atom*3+ix);
     reset();
 }
 
