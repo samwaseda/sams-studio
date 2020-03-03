@@ -75,6 +75,7 @@ class MC{
 		void run(double, int);
 		void set_lambda(double);
 		vector<double> get_magnetic_moments();
+        void set_magnetic_moments(vector<double>);
 		void set_landau_coeff(vector<double>, int, int);
 		void set_heisenberg_coeff(vector<double>, vector<int>, vector<int>, int, int, bool);
 		void clear_landau_coeff(int);

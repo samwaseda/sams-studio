@@ -160,12 +160,14 @@ void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0, b
 		dphi = 0.1*2.0*M_PI;
 		dtheta = 0.1;
 	}
+    /*
     if(sine)
     {
         if(deg!=2)
             throw invalid_argument("Currently sine functions can be used only for degree 2");
         heisen_func[index].push_back(J_cross_prod);
     }
+    */
     switch(deg){
         case 1:
             heisen_func[index].push_back(J_linear);
@@ -386,6 +388,16 @@ vector<double> MC::get_magnetic_moments(){
         for(int ix=0; ix<3; ix++)
             m.at(i_atom*3+ix) = atom[i_atom].m[ix];
     return m;
+}
+
+void MC::set_magnetic_moments(vector<double> m_in)
+{
+    if(int(m.size())!=3*n_tot)
+        throw invalid_argument("Length of magnetic moments not correct");
+    for(int i_atom=0; i_atom<n_tot; i_atom++)
+        for(int ix=0; ix<3; ix++)
+             atom[i_atom].m[ix] = m_in.at(i_atom*3+ix)
+    reset();
 }
 
 double MC::get_energy(int index=0){

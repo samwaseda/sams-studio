@@ -103,6 +103,13 @@ cdef class MC:
         m = self.c_mc.get_magnetic_moments()
         return np.array(m).reshape(-1, 3)
 
+    def set_magnetic_moments(self, magmoms):
+        """
+            Args:
+                magmoms (ndarray/list): nx3 magnetic moments to set
+        """
+        self.c_mc.set_magnetic_moments(np.array(magmoms).flatten())
+
     def get_average_magnetization(self, vector=False):
         """
             Returns:
