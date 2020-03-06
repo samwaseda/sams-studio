@@ -125,8 +125,8 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     if(value==0)
         return;
     update_flag(false);
-	if(dm==0)
-		dm = 0.1;
+    if(dm==0)
+        dm = 0.1;
     landau_coeff[index].push_back(value);
     switch(deg){
         case 2:
@@ -155,11 +155,11 @@ void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0){
     update_flag(false);
     m_n[index].push_back(mm);
     heisen_coeff[index].push_back(JJ);
-	if(dphi==0 && dtheta==0)
-	{
-		dphi = 0.1*2.0*M_PI;
-		dtheta = 0.1;
-	}
+    if(dphi==0 && dtheta==0)
+    {
+        dphi = 0.1*2.0*M_PI;
+        dtheta = 0.1;
+    }
     switch(deg){
         case 1:
             heisen_func[index].push_back(J_linear);
@@ -249,7 +249,7 @@ void average_energy::reset()
     }
 }
 
-MC::MC(): n_tot(0), debug_mode(false), kB(8.6173305e-5), lambda(-1)
+MC::MC(): n_tot(0), debug_mode(false), kB(8.6173305e-5), lambda(-1), eta(1)
 {
     reset();
 }
@@ -285,18 +285,18 @@ void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> 
 void MC::create_atoms(int number_of_atoms)
 {
 
-	if(number_of_atoms<=0)
-		throw invalid_argument("Number of atoms has to be a positive integer");
-	if(n_tot!=0)
-		throw invalid_argument("You cannot change the number of atoms during the simulation");
+    if(number_of_atoms<=0)
+        throw invalid_argument("Number of atoms has to be a positive integer");
+    if(n_tot!=0)
+        throw invalid_argument("You cannot change the number of atoms during the simulation");
     n_tot = number_of_atoms;
     atom = new Atom[n_tot];
 }
 
 int MC::get_number_of_atoms(){
-	if (n_tot==0)
-		throw invalid_argument("Atoms not created yet");
-	return n_tot;
+    if (n_tot==0)
+        throw invalid_argument("Atoms not created yet");
+    return n_tot;
 }
 
 void MC::clear_landau_coeff(int index=0)
@@ -317,34 +317,83 @@ bool MC::thermodynamic_integration(){
     return false;
 }
 
+bool MC::accept(int ID_rand){
+    atom[ID_rand].propose_new_state();
+    dE = atom[ID_rand].dE();
+    if(thermodynamic_integration())
+        dE = (1-lambda)*dE+lambda*atom[ID_rand].dE(1);
+    if(dE<=0)
+        return true;
+    else if(kBT==0)
+        return false;
+    if(preparing_qmc())
+    {
+        double E_old = atom[ID_rand].E()-dE;
+        if((exp(E_old/kBT)-1)/(exp((E_old+dE)/kBT)-1)>rand()/(double)RAND_MAX)
+            return true;
+        else
+            return false;
+    }
+    if(exp(-dE/(kBT*eta))>rand()/(double)RAND_MAX)
+        return true;
+    return false;
+}
+
+bool MC::preparing_qmc()
+{
+    if(eta>0)
+        return false;
+    return true;
+}
+
+void MC::prepare_qmc(double T_in, int number_of_iterations){
+    if(thermodynamic_integration())
+        throw invalid_argument("QMC+Thermodynamic integration now allowed");
+    eta = 0;
+    vector<double> m = get_magnetic_moments();
+    run(0, number_of_iterations);
+    double E_current = get_energy();
+    set_magnetic_moments(m);
+    run(T_in, number_of_iterations);
+    reset();
+    run(T_in, number_of_iterations);
+    eta = (E_tot.E_mean()-E_current)/n_tot/kBT;
+}
+
+double MC::get_eta(){
+    return eta;
+}
+
+double MC::set_eta(double eta_in){
+    if(eta_in<0)
+        throw invalid_argument("Invalid eta value");
+    eta = eta_in;
+}
+
 void MC::run(double T_in, int number_of_iterations=1){
     double kBT = kB*T_in, dEE_tot[2], dE, EE_tot[2];
     clock_t begin = clock();
     int ID_rand;
-    EE_tot[0] = get_energy(0);
-    E_tot.add(EE_tot[0], true, 0);
-    if(thermodynamic_integration())
+    for (int i=0; i<2; i++)
     {
-        EE_tot[1] = get_energy(1);
-        E_tot.add(EE_tot[1], true, 1);
+        EE_tot[i] = get_energy(i);
+        E_tot.add(EE_tot[i], true, i);
+        if(!thermodynamic_integration())
+            break;
     }
     for(int iter=0; iter<number_of_iterations; iter++)
     {
         for(int i=0; i<2; i++)
         {
             dEE_tot[i] = 0;
-			if (debug_mode)
-				EE_tot[i] = -get_energy(i);
+            if (debug_mode)
+                EE_tot[i] = -get_energy(i);
         }
         for(int i=0; i<n_tot; i++)
         {
             MC_count++;
             ID_rand = rand()%n_tot;
-            atom[ID_rand].propose_new_state();
-            dE = atom[ID_rand].dE();
-            if(thermodynamic_integration())
-                dE = (1-lambda)*dE+lambda*atom[ID_rand].dE(1);
-            if(dE<0 || (kBT>0)*exp(-dE/kBT)>rand()/(double)RAND_MAX)
+            if(accept(ID_rand))
             {
                 acc++;
                 dEE_tot[0] += atom[ID_rand].dE();
@@ -354,14 +403,14 @@ void MC::run(double T_in, int number_of_iterations=1){
             else
                 atom[ID_rand].revoke();
         }
-		for(int i=0; debug_mode && i<2; i++)
-		{
-			EE_tot[i] += get_energy(i);
-			if(abs(EE_tot[i]-dEE_tot[i])>1.0e-6*n_tot)
-				throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[i])+" "+to_string(dEE_tot[i]) );
-			if(!thermodynamic_integration())
-				break;
-		}
+        for(int i=0; debug_mode && i<2; i++)
+        {
+            EE_tot[i] += get_energy(i);
+            if(abs(EE_tot[i]-dEE_tot[i])>1.0e-6*n_tot)
+                throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[i])+" "+to_string(dEE_tot[i]) );
+            if(!thermodynamic_integration())
+                break;
+        }
         E_tot.add(dEE_tot[0]);
         if(thermodynamic_integration())
             E_tot.add(dEE_tot[1], false, 1);
@@ -414,10 +463,10 @@ double MC::get_acceptance_ratio(){
 } 
 
 vector<double> MC::get_acceptance_ratios(){
-	vector<double> v(n_tot);
-	for(int i=0; i<n_tot; i++)
-		v.at(i) = atom[i].get_acceptance_ratio();
-	return v;
+    vector<double> v(n_tot);
+    for(int i=0; i<n_tot; i++)
+        v.at(i) = atom[i].get_acceptance_ratio();
+    return v;
 }
 
 void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dtheta)
