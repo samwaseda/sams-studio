@@ -317,9 +317,9 @@ bool MC::thermodynamic_integration(){
     return false;
 }
 
-bool MC::accept(int ID_rand){
+bool MC::accept(int ID_rand, double kBT){
     atom[ID_rand].propose_new_state();
-    dE = atom[ID_rand].dE();
+    double dE = atom[ID_rand].dE();
     if(thermodynamic_integration())
         dE = (1-lambda)*dE+lambda*atom[ID_rand].dE(1);
     if(dE<=0)
@@ -346,6 +346,13 @@ bool MC::preparing_qmc()
     return true;
 }
 
+double MC::get_energy(int index=0){
+    double EE=0;
+    for(int i=0; i<n_tot; i++)
+        EE += atom[i].E(index, true);
+    return EE;
+}
+
 void MC::prepare_qmc(double T_in, int number_of_iterations){
     if(thermodynamic_integration())
         throw invalid_argument("QMC+Thermodynamic integration now allowed");
@@ -357,21 +364,21 @@ void MC::prepare_qmc(double T_in, int number_of_iterations){
     run(T_in, number_of_iterations);
     reset();
     run(T_in, number_of_iterations);
-    eta = (E_tot.E_mean()-E_current)/n_tot/kBT;
+    eta = (E_tot.E_mean()-E_current)/n_tot/(kB*T_in);
 }
 
 double MC::get_eta(){
     return eta;
 }
 
-double MC::set_eta(double eta_in){
+void MC::set_eta(double eta_in){
     if(eta_in<0)
         throw invalid_argument("Invalid eta value");
     eta = eta_in;
 }
 
 void MC::run(double T_in, int number_of_iterations=1){
-    double kBT = kB*T_in, dEE_tot[2], dE, EE_tot[2];
+    double kBT = kB*T_in, dEE_tot[2], EE_tot[2];
     clock_t begin = clock();
     int ID_rand;
     for (int i=0; i<2; i++)
@@ -393,7 +400,7 @@ void MC::run(double T_in, int number_of_iterations=1){
         {
             MC_count++;
             ID_rand = rand()%n_tot;
-            if(accept(ID_rand))
+            if(accept(ID_rand, kBT))
             {
                 acc++;
                 dEE_tot[0] += atom[ID_rand].dE();
@@ -439,13 +446,6 @@ void MC::set_magnetic_moments(vector<double> m_in)
         for(int ix=0; ix<3; ix++)
              atom[i_atom].m[ix] = m_in.at(i_atom*3+ix);
     reset();
-}
-
-double MC::get_energy(int index=0){
-    double EE=0;
-    for(int i=0; i<n_tot; i++)
-        EE += atom[i].E(index, true);
-    return EE;
 }
 
 double MC::get_mean_energy(int index=0){

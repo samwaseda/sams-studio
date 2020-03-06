@@ -67,15 +67,18 @@ class MC{
         default_random_engine generator;
         average_energy E_tot;
         bool thermodynamic_integration();
+        bool accept(int, double);
+        bool preparing_qmc();
     public:
         MC();
         ~MC();
         void create_atoms(int);
+        void prepare_qmc(double, int);
         void activate_debug();
         void run(double, int);
-        bool accept();
         void set_lambda(double);
-        void prepare_qmc(double, int);
+        void set_eta(double);
+        double get_eta();
         vector<double> get_magnetic_moments();
         void set_magnetic_moments(vector<double>);
         void set_landau_coeff(vector<double>, int, int);
