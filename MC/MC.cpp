@@ -249,7 +249,7 @@ void average_energy::reset()
     }
 }
 
-MC::MC(): n_tot(0), debug_mode(false), kB(8.6173305e-5), lambda(-1), eta(1)
+MC::MC(): n_tot(0), debug_mode(false), kB(8.6173305e-5), lambda(-1), eta(1), E_min(0)
 {
     reset();
 }
@@ -357,10 +357,13 @@ void MC::prepare_qmc(double T_in, int number_of_iterations){
     if(thermodynamic_integration())
         throw invalid_argument("QMC+Thermodynamic integration now allowed");
     eta = 0;
-    vector<double> m = get_magnetic_moments();
-    run(0, number_of_iterations);
-    E_min = get_energy();
-    set_magnetic_moments(m);
+    if(E_min==0)
+    {
+        vector<double> m = get_magnetic_moments();
+        run(0, number_of_iterations);
+        E_min = get_energy();
+        set_magnetic_moments(m);
+    }
     run(T_in, number_of_iterations);
     reset();
     run(T_in, number_of_iterations);
