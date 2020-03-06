@@ -329,7 +329,7 @@ bool MC::accept(int ID_rand, double kBT){
     if(preparing_qmc())
     {
         double E_old = atom[ID_rand].E()-dE;
-        if((exp(E_old/kBT)-1)/(exp((E_old+dE)/kBT)-1)>rand()/(double)RAND_MAX)
+        if((exp((E_old-E_min)/kBT)-1)/(exp((E_old+dE-E_min)/kBT)-1)>rand()/(double)RAND_MAX)
             return true;
         else
             return false;
@@ -359,12 +359,12 @@ void MC::prepare_qmc(double T_in, int number_of_iterations){
     eta = 0;
     vector<double> m = get_magnetic_moments();
     run(0, number_of_iterations);
-    double E_current = get_energy();
+    E_min = get_energy();
     set_magnetic_moments(m);
     run(T_in, number_of_iterations);
     reset();
     run(T_in, number_of_iterations);
-    eta = (E_tot.E_mean()-E_current)/n_tot/(kB*T_in);
+    eta = (E_tot.E_mean()-E_min)/n_tot/(kB*T_in);
 }
 
 double MC::get_eta(){

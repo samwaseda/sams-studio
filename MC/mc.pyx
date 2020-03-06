@@ -164,6 +164,34 @@ cdef class MC:
         """
         return self.c_mc.get_energy_variance(index)
 
+    def set_eta(self, val):
+        """
+            Args:
+                val (float): eta value for QMC
+        """
+        if val<0:
+            raise ValueError("eta cannot be negative")
+        self.c_mc.set_eta(val)
+
+    def get_eta(self):
+        """
+            Returns:
+                (float) current eta value
+        """
+        return self.c_mc.get_eta()
+
+    def prepare_qmc(self, temperature, number_of_iterations=1, reset=True):
+        """
+            Args:
+                temperature (float): Temperature in K
+                number_of_iterations (int): Number of MC steps (internally multiplied
+                                            by the number of atoms)
+                reset (bool): Resets statistics (s. get_mean_energy() etc.)
+        """
+        if reset:
+            self.c_mc.reset()
+        self.c_mc.prepare_qmc(temperature, number_of_iterations)
+
     def set_lambda(self, val):
         """
             Args:

@@ -21,6 +21,9 @@ cdef extern from "MC.h":
         double get_energy_variance(int)
         double get_mean_energy(int)
         double set_lambda(double) except +
+        double get_eta() except +
+        void set_eta(double) except +
+        void prepare_qmc(double, int) except +
         double get_steps_per_second()
         double set_magnitude(vector[double], vector[double], vector[double]) except +
         int get_number_of_atoms()

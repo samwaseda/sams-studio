@@ -62,7 +62,7 @@ class MC{
         int acc, MC_count, n_tot;
         clock_t steps_per_second;
         bool debug_mode;
-        double kB, lambda, eta;
+        double kB, lambda, eta, E_min;
         Atom *atom;
         default_random_engine generator;
         average_energy E_tot;
