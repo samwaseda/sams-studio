@@ -329,7 +329,7 @@ bool MC::accept(int ID_rand, double kBT){
     if(preparing_qmc())
     {
         double E_old = atom[ID_rand].E()-dE;
-        if((exp((E_old-E_min)/kBT)-1)/(exp((E_old+dE-E_min)/kBT)-1)>rand()/(double)RAND_MAX)
+        if((exp((E_old-E_min)/kBT/n_tot)-1)/(exp(((E_old-E_min)/n_tot+dE)/kBT)-1)>rand()/(double)RAND_MAX)
             return true;
         else
             return false;
