@@ -6,30 +6,97 @@ double zufall(){
     return 1.0-2.0*(rand()/(double)RAND_MAX);
 }
 
-double Magnitude::value(double xxx){return 0;}
+double norm(double * x){
+    return sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
+}
 
+double Magnitude::value(double xxx){return 0;}
 double Square::value(double xxx){ return xxx*xxx; }
 double Quartic::value(double xxx){ return square.value(xxx)*square.value(xxx); }
 double Sextic::value(double xxx){ return quartic.value(xxx)*square.value(xxx); }
 double Octic::value(double xxx){ return quartic.value(xxx)*quartic.value(xxx); }
 double Decic::value(double xxx){ return sextic.value(xxx)*quartic.value(xxx); }
 
+vector<double> Magnitude::gradient(double *m){
+    vector<double> v(3, 0);
+    return v;
+}
 
-double J_linear(double *m_one, double *m_two, double *m_three=NULL){
+vector<double> Square::gradient(double *m){
+    vector<double> v(m, m+3);
+    for(int i=0; i<3; i++)
+        v.at(i) *= 2;
+    return v;
+}
+
+vector<double> Quartic::gradient(double *m){
+    vector<double> v(m, m+3);
+    double mag = square.value(norm(&(v[0])));
+    for(int i=0; i<3; i++)
+        v.at(i) *= 4*mag;
+    return v;
+}
+
+vector<double> Sextic::gradient(double *m){
+    vector<double> v(m, m+3);
+    double mag = quartic.value(norm(&(v[0])));
+    for(int i=0; i<3; i++)
+        v.at(i) *= 6*mag;
+    return v;
+}
+
+vector<double> Octic::gradient(double *m){
+    vector<double> v(m, m+3);
+    double mag = sextic.value(norm(&(v[0])));
+    for(int i=0; i<3; i++)
+        v.at(i) *= 8*mag;
+    return v;
+}
+
+vector<double> Decic::gradient(double *m){
+    vector<double> v(m, m+3);
+    double mag = octic.value(norm(&(v[0])));
+    for(int i=0; i<3; i++)
+        v.at(i) *= 10*mag;
+    return v;
+}
+
+double Bilinear::value(double *m_one, double *m_two, double *m_three=NULL){
+    return 0;
+}
+
+vector<double> Bilinear::gradient(double *m_one, double *m_two){
+    vector<double> v(3, 0);
+    return v;
+}
+
+double J_linear::value(double *m_one, double *m_two, double *m_three=NULL){
     if (m_three!=NULL)
         return m_one[0]*(m_two[0]-m_three[0])+m_one[1]*(m_two[1]-m_three[1])+m_one[2]*(m_two[2]-m_three[2]);
     else
         return m_one[0]*m_two[0]+m_one[1]*m_two[1]+m_one[2]*m_two[2];
 }
 
-double J_square(double *m_one, double *m_two, double *m_three=NULL){
-    if (m_three!=NULL)
-        return square.value(J_linear(m_one, m_two))-square.value(J_linear(m_one, m_three));
-    else
-        return square.value(J_linear(m_one, m_two));
+vector<double> J_linear::gradient(double *m_one, double *m_two){
+    vector<double> v(m_two, m_two+3);
+    return v;
 }
 
-double cross_prod_sq(double *m_one, double *m_two){
+double J_square::value(double *m_one, double *m_two, double *m_three=NULL){
+    if (m_three!=NULL)
+        return square.value(j_linear.value(m_one, m_two))-square.value(j_linear.value(m_one, m_three));
+    else
+        return square.value(j_linear.value(m_one, m_two));
+}
+
+vector<double> J_square::gradient(double *m_one, double *m_two){
+    vector<double> v(m_one, m_one+3);
+    for(int i=0; i<3; i++)
+        v.at(i) *= 2*m_two[i]*m_two[i];
+    return v;
+}
+
+/*double cross_prod_sq(double *m_one, double *m_two){
     return (square.value(m_one[1]*m_two[2]-m_one[2]*m_two[1])
            +square.value(m_one[2]*m_two[0]-m_one[0]*m_two[2])
            +square.value(m_one[0]*m_two[1]-m_one[1]*m_two[0]));
@@ -39,7 +106,7 @@ double J_cross_prod(double *m_one, double *m_two, double *m_three=NULL){
     if (m_three==NULL)
         return cross_prod_sq(m_one, m_two);
     return cross_prod_sq(m_one, m_two)-cross_prod_sq(m_one, m_three);
-}
+}*/
 
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
 {
@@ -78,7 +145,7 @@ double Atom::E(int index=0, bool force_compute=false){
         return E_current[index];
     E_current[index] = 0;
     for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        E_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, NULL);
+        E_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->value(m_n[index].at(i_atom), m, NULL);
     E_current[index] *= 0.5;
     for(int i=0; i<int(landau_coeff[index].size()); i++)
         E_current[index] += landau_coeff[index].at(i)*landau_func[index].at(i)->value(mabs);
@@ -94,7 +161,7 @@ double Atom::dE(int index=0, bool force_compute=false){
     count++;
     acc++;
     for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        dE_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, m_old);
+        dE_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->value(m_n[index].at(i_atom), m, m_old);
     for(int i=0; i<int(landau_coeff[index].size()); i++)
         dE_current[index] += landau_coeff[index].at(i)*(landau_func[index].at(i)->value(mabs)-landau_func[index].at(i)->value(mabs_old));
     if(!debug)
@@ -165,10 +232,10 @@ void Atom::set_heisenberg_coeff(double* mm, double JJ, int deg=1, int index=0){
     }
     switch(deg){
         case 1:
-            heisen_func[index].push_back(J_linear);
+            heisen_func[index].push_back(&j_linear);
             break;
         case 2:
-            heisen_func[index].push_back(J_square);
+            heisen_func[index].push_back(&j_square);
             break;
         default:
             throw invalid_argument("Pairwise interaction not found");
