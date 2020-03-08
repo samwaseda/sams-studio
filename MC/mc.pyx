@@ -164,6 +164,9 @@ cdef class MC:
         """
         return self.c_mc.get_energy_variance(index)
 
+    def revoke_qmc(self):
+        self.set_eta(1)
+
     def set_eta(self, val):
         """
             Args:

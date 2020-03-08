@@ -7,6 +7,12 @@ using namespace std;
 
 double zufall();
 
+class Magnitude{
+    public:
+        virtual double value(double);
+        virtual vector<double> gradient(double *);
+}
+
 double square(double);
 double quartic(double);
 double sextic(double);
