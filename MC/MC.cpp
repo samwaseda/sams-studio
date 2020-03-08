@@ -6,11 +6,14 @@ double zufall(){
     return 1.0-2.0*(rand()/(double)RAND_MAX);
 }
 
-double square(double xxx){ return xxx*xxx; }
-double quartic(double xxx){ return square(xxx)*square(xxx); }
-double sextic(double xxx){ return quartic(xxx)*square(xxx); }
-double octic(double xxx){ return quartic(xxx)*quartic(xxx); }
-double decic(double xxx){ return sextic(xxx)*quartic(xxx); }
+double Magnitude::value(double xxx){return 0;}
+
+double Square::value(double xxx){ return xxx*xxx; }
+double Quartic::value(double xxx){ return square.value(xxx)*square.value(xxx); }
+double Sextic::value(double xxx){ return quartic.value(xxx)*square.value(xxx); }
+double Octic::value(double xxx){ return quartic.value(xxx)*quartic.value(xxx); }
+double Decic::value(double xxx){ return sextic.value(xxx)*quartic.value(xxx); }
+
 
 double J_linear(double *m_one, double *m_two, double *m_three=NULL){
     if (m_three!=NULL)
@@ -21,15 +24,15 @@ double J_linear(double *m_one, double *m_two, double *m_three=NULL){
 
 double J_square(double *m_one, double *m_two, double *m_three=NULL){
     if (m_three!=NULL)
-        return square(J_linear(m_one, m_two))-square(J_linear(m_one, m_three));
+        return square.value(J_linear(m_one, m_two))-square.value(J_linear(m_one, m_three));
     else
-        return square(J_linear(m_one, m_two));
+        return square.value(J_linear(m_one, m_two));
 }
 
 double cross_prod_sq(double *m_one, double *m_two){
-    return (square(m_one[1]*m_two[2]-m_one[2]*m_two[1])
-           +square(m_one[2]*m_two[0]-m_one[0]*m_two[2])
-           +square(m_one[0]*m_two[1]-m_one[1]*m_two[0]));
+    return (square.value(m_one[1]*m_two[2]-m_one[2]*m_two[1])
+           +square.value(m_one[2]*m_two[0]-m_one[0]*m_two[2])
+           +square.value(m_one[0]*m_two[1]-m_one[1]*m_two[0]));
 }
 
 double J_cross_prod(double *m_one, double *m_two, double *m_three=NULL){
@@ -78,7 +81,7 @@ double Atom::E(int index=0, bool force_compute=false){
         E_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, NULL);
     E_current[index] *= 0.5;
     for(int i=0; i<int(landau_coeff[index].size()); i++)
-        E_current[index] += landau_coeff[index].at(i)*landau_func[index].at(i)(mabs);
+        E_current[index] += landau_coeff[index].at(i)*landau_func[index].at(i)->value(mabs);
     if(!debug)
         E_uptodate[index] = true;
     return E_current[index];
@@ -93,7 +96,7 @@ double Atom::dE(int index=0, bool force_compute=false){
     for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
         dE_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)(m_n[index].at(i_atom), m, m_old);
     for(int i=0; i<int(landau_coeff[index].size()); i++)
-        dE_current[index] += landau_coeff[index].at(i)*(landau_func[index].at(i)(mabs)-landau_func[index].at(i)(mabs_old));
+        dE_current[index] += landau_coeff[index].at(i)*(landau_func[index].at(i)->value(mabs)-landau_func[index].at(i)->value(mabs_old));
     if(!debug)
         dE_uptodate[index] = true;
     return dE_current[index];
@@ -130,19 +133,19 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     landau_coeff[index].push_back(value);
     switch(deg){
         case 2:
-            landau_func[index].push_back(square);
+            landau_func[index].push_back(&square);
             break;
         case 4:
-            landau_func[index].push_back(quartic);
+            landau_func[index].push_back(&quartic);
             break;
         case 6:
-            landau_func[index].push_back(sextic);
+            landau_func[index].push_back(&sextic);
             break;
         case 8:
-            landau_func[index].push_back(octic);
+            landau_func[index].push_back(&octic);
             break;
         case 10:
-            landau_func[index].push_back(decic);
+            landau_func[index].push_back(&decic);
             break;
         default:
             throw invalid_argument("Longitudinal function not found");
@@ -220,7 +223,7 @@ void average_energy::add(double E_in, bool total_energy=false, int index=0)
     else
         E_sum[index] += E_in;
     EE[index] += E_sum[index];
-    EE_sq[index] += square(E_sum[index]);
+    EE_sq[index] += square.value(E_sum[index]);
     NN[index] += 1;
 }
 
@@ -233,7 +236,7 @@ double average_energy::E_mean(int index=0){
 
 double average_energy::E_var(int index=0){
     if(NN[index]>0)
-        return (EE_sq[index]-square(EE[index])/(double)NN[index])/(double)NN[index];
+        return (EE_sq[index]-square.value(EE[index])/(double)NN[index])/(double)NN[index];
     else
         return 0;
 }

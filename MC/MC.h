@@ -7,17 +7,41 @@ using namespace std;
 
 double zufall();
 
-class Magnitude{
-    public:
-        virtual double value(double);
-        virtual vector<double> gradient(double *);
-}
+struct Magnitude{
+    virtual double value(double);
+        //virtual vector<double> gradient(double *);
+};
 
-double square(double);
-double quartic(double);
-double sextic(double);
-double octic(double);
-double decic(double);
+struct Square : Magnitude {
+    double value(double);
+    //vector<double> gradient(double *);
+} square;
+
+struct Quartic : Magnitude {
+    double value(double);
+    //vector<double> gradient(double *);
+} quartic;
+
+struct Sextic : Magnitude {
+    double value(double);
+    //vector<double> gradient(double *);
+} sextic;
+
+struct Octic : Magnitude {
+    double value(double);
+    //vector<double> gradient(double *);
+} octic;
+
+struct Decic : Magnitude {
+    double value(double);
+    //vector<double> gradient(double *);
+} decic;
+
+//double square(double);
+//double quartic(double);
+//double sextic(double);
+//double octic(double);
+//double decic(double);
 double J_linear(double*, double*, double*);
 double J_square(double*, double*, double*);
 double J_cross_prod(double*, double*, double*);
@@ -26,7 +50,7 @@ class Atom{
     private:
         double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, E_current[2], dE_current[2], dm, dphi, dtheta, mmax;
         vector<double> heisen_coeff[2], landau_coeff[2];
-        vector<double (*)(double)> landau_func[2];
+        vector<Magnitude*> landau_func[2];
         vector<double (*)(double*, double*, double*)> heisen_func[2];
         vector<double*> m_n[2];
         int acc, count;
