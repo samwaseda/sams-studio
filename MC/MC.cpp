@@ -150,6 +150,13 @@ void Atom::set_m(double mabs_new, double theta_new, double phi_new){
     m[2] = mabs*cos(theta);
 }
 
+void Atom::update_polar_coordinates(){
+    update_flag(false);
+    mabs = sqrt((m*m).sum());
+    theta = atan2(sqrt(m[0]*m[0]+m[1]*m[1]), m[2]);
+    phi = atan2(m[1], m[2]);
+}
+
 void Atom::revoke(){
     acc--;
     set_m(mabs_old, theta_old, phi_old);
@@ -222,7 +229,7 @@ void Atom::propose_new_state(){
     double theta_new = cos(theta)+dtheta*zufall();
     double phi_new = phi+dphi*zufall();
     while(abs(theta_new)>1)
-        theta_new = cos(theta)+0.2*zufall();
+        theta_new = cos(theta)+dtheta*zufall();
     theta_new = acos(theta_new);
     set_m(mabs_new, theta_new, phi_new);
 }
@@ -251,15 +258,14 @@ double Atom::run_gradient_descent(double h, double lambda){
         if(lambda==0)
             break;
     }
-    /*
     valarray<double> mr = (grad*m).sum()/(m*m).sum()*m;
     valarray<double> mphi = {-m[1], m[0], 0};
     if((mphi*mphi).sum()>1.0e-8)
         mphi = (grad*mphi).sum()/(mphi*mphi).sum()*mphi;
     valarray<double> mtheta = grad-mr-mphi;
     grad = dm*mr+dphi*mphi+dtheta*mtheta;
-    */
     m -= h*grad;
+    update_polar_coordinates();
     return sqrt((grad*grad).sum());
 }
 
@@ -379,7 +385,7 @@ bool MC::thermodynamic_integration(){
     return false;
 }
 
-bool MC::accept(int ID_rand, double kBT){
+bool MC::accept(int ID_rand, double kBT, double E_current){
     atom[ID_rand].propose_new_state();
     double dE = atom[ID_rand].dE();
     if(thermodynamic_integration())
@@ -390,8 +396,7 @@ bool MC::accept(int ID_rand, double kBT){
         return false;
     if(preparing_qmc())
     {
-        double E_old = atom[ID_rand].E()-dE;
-        if((exp((E_old-E_min)/kBT/n_tot)-1)/(exp(((E_old-E_min)/n_tot+dE)/kBT)-1)>rand()/(double)RAND_MAX)
+        if((exp((E_current-E_min)/kBT/n_tot)-1)/(exp(((E_current-E_min)/n_tot+dE)/kBT)-1)>rand()/(double)RAND_MAX)
             return true;
         else
             return false;
@@ -415,6 +420,23 @@ double MC::get_energy(int index=0){
     return EE;
 }
 
+double MC::run_gradient_descent(int max_iter, double step_size=1, double decrement=1.0-1.0e-6)
+{
+    reset();
+    double residual = 0;
+    for(int iter=0; iter<max_iter; iter++)
+    {
+        residual = 0;
+        for(int i_atom=0; i_atom<n_tot; i_atom++)
+            residual += atom[i_atom].run_gradient_descent(step_size, lambda*thermodynamic_integration());
+        step_size *= decrement;
+    }
+    double E_min_tmp = get_energy()/n_tot;
+    if(E_min>E_min_tmp)
+        E_min = E_min_tmp;
+    return residual;
+}
+
 void MC::prepare_qmc(double T_in, int number_of_iterations){
     if(thermodynamic_integration())
         throw invalid_argument("QMC+Thermodynamic integration now allowed");
@@ -422,7 +444,7 @@ void MC::prepare_qmc(double T_in, int number_of_iterations){
     if(E_min==0)
     {
         vector<double> m = get_magnetic_moments();
-        run(0, number_of_iterations);
+        run_gradient_descent(number_of_iterations);
         E_min = get_energy();
         set_magnetic_moments(m);
     }
@@ -465,7 +487,7 @@ void MC::run(double T_in, int number_of_iterations=1){
         {
             MC_count++;
             ID_rand = rand()%n_tot;
-            if(accept(ID_rand, kBT))
+            if(accept(ID_rand, kBT, EE_tot[0]+dEE_tot[0]))
             {
                 acc++;
                 dEE_tot[0] += atom[ID_rand].dE();
@@ -508,8 +530,11 @@ void MC::set_magnetic_moments(vector<double> m_in)
     if(int(m_in.size())!=3*n_tot)
         throw invalid_argument("Length of magnetic moments not correct");
     for(int i_atom=0; i_atom<n_tot; i_atom++)
+    {
         for(int ix=0; ix<3; ix++)
              atom[i_atom].m[ix] = m_in.at(i_atom*3+ix);
+        atom[i_atom].update_polar_coordinates();
+    }
     reset();
 }
 
@@ -540,19 +565,6 @@ void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dt
         throw invalid_argument("Length of vectors not consistent");
     for(int i=0; i<n_tot; i++)
         atom[i].set_magnitude(dm[i], dphi[i], dtheta[i]);
-}
-
-double MC::run_gradient_descent(int max_iter, double step_size=0.1, double decrement=0.99)
-{
-    double residual = 0;
-    for(int iter=0; iter<max_iter; iter++)
-    {
-        residual = 0;
-        for(int i_atom=0; i_atom<n_tot; i_atom++)
-            residual += atom[i_atom].run_gradient_descent(step_size, lambda*thermodynamic_integration());
-        step_size *= decrement;
-    }
-    return residual;
 }
 
 void MC::reset()

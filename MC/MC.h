@@ -86,6 +86,7 @@ class Atom{
         void activate_debug();
         void propose_new_state();
         void set_magnitude(double, double, double);
+        void update_polar_coordinates();
         double run_gradient_descent(double, double);
 };
 
@@ -112,7 +113,7 @@ class MC{
         default_random_engine generator;
         average_energy E_tot;
         bool thermodynamic_integration();
-        bool accept(int, double);
+        bool accept(int, double, double);
         bool preparing_qmc();
     public:
         MC();
