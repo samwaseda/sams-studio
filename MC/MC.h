@@ -9,66 +9,66 @@ double zufall();
 
 struct Magnitude{
     virtual double value(double);
-    virtual vector<double> gradient(double *);
+    virtual valarray<double> gradient(valarray<double> *);
 };
 
 struct Square : Magnitude {
     double value(double);
-    vector<double> gradient(double *);
+    valarray<double> gradient(valarray<double> *);
 } square;
 
 struct Quartic : Magnitude {
     double value(double);
-    vector<double> gradient(double *);
+    valarray<double> gradient(valarray<double> *);
 } quartic;
 
 struct Sextic : Magnitude {
     double value(double);
-    vector<double> gradient(double *);
+    valarray<double> gradient(valarray<double> *);
 } sextic;
 
 struct Octic : Magnitude {
     double value(double);
-    vector<double> gradient(double *);
+    valarray<double> gradient(valarray<double> *);
 } octic;
 
 struct Decic : Magnitude {
     double value(double);
-    vector<double> gradient(double *);
+    valarray<double> gradient(valarray<double> *);
 } decic;
 
 struct Bilinear{
-    virtual double value(double*, double*, double*);
-    virtual vector<double> gradient(double*, double*);
+    virtual valarray<double> value(valarray<double>*, valarray<double>*, valarray<double>*);
+    virtual valarray<double> gradient(valarray<double>*, valarray<double>*);
 };
 
 struct J_linear : Bilinear {
-    double value(double*, double*, double*);
-    vector<double> gradient(double*, double*);
+    valarray<double> value(valarray<double>*, valarray<double>*, valarray<double>*);
+    valarray<double> gradient(valarray<double>*, valarray<double>*);
 } j_linear;
 
 struct J_square : Bilinear {
-    double value(double*, double*, double*);
-    vector<double> gradient(double*, double*);
+    valarray<double> value(valarray<double>*, valarray<double>*, valarray<double>*);
+    valarray<double> gradient(valarray<double>*, valarray<double>*);
 } j_square;
 
 
 // double J_cross_prod(double*, double*, double*);
-double norm(double *);
 
 class Atom{
     private:
-        double mabs, mabs_old, theta, theta_old, phi, phi_old, *m_old, E_current[2], dE_current[2], dm, dphi, dtheta, mmax;
+        double mabs, mabs_old, theta, theta_old, phi, phi_old, E_current[2], dE_current[2], dm, dphi, dtheta, mmax;
+        valarray<double> m_old
         vector<double> heisen_coeff[2], landau_coeff[2];
         vector<Magnitude*> landau_func[2];
         vector<Bilinear*> heisen_func[2];
-        vector<double*> m_n[2];
+        vector<valarray<double> * > m_n[2];
         int acc, count;
         bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m
         void update_flag(bool);
         void set_m(double, double, double);
     public:
-        double *m;
+        valarray<double> m;
         Atom();
         ~Atom();
         double get_acceptance_ratio();
