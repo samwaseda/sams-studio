@@ -53,7 +53,7 @@ double J_linear::value(valarray<double> *m_one, valarray<double> *m_two, valarra
 }
 
 valarray<double> J_linear::gradient(valarray<double> *m_one, valarray<double> *m_two){
-    return (*m_two);
+    return (*m_one);
 }
 
 double J_square::value(valarray<double> *m_one, valarray<double> *m_two, valarray<double> *m_three=NULL){
@@ -66,18 +66,6 @@ double J_square::value(valarray<double> *m_one, valarray<double> *m_two, valarra
 valarray<double> J_square::gradient(valarray<double> *m_one, valarray<double> *m_two){
     return 2*(*m_two).apply([](double x){return x*x;}).sum()*(*m_one);
 }
-
-/*double cross_prod_sq(double *m_one, double *m_two){
-    return (square.value(m_one[1]*m_two[2]-m_one[2]*m_two[1])
-           +square.value(m_one[2]*m_two[0]-m_one[0]*m_two[2])
-           +square.value(m_one[0]*m_two[1]-m_one[1]*m_two[0]));
-}
-
-double J_cross_prod(double *m_one, double *m_two, double *m_three=NULL){
-    if (m_three==NULL)
-        return cross_prod_sq(m_one, m_two);
-    return cross_prod_sq(m_one, m_two)-cross_prod_sq(m_one, m_three);
-}*/
 
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
 {
@@ -245,6 +233,26 @@ void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
 }
 
 void run_gradient_descent(double h, double lambda){
+    valarray<double> grad(3, 0);
+    for(int index=0; index<2; index++)
+    {
+        if(lambda==1 && index==0)
+            continue;
+        for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
+            grad -= lambda*heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->gradient(m_n[index].at(i_atom), &m);
+        for(int i=0; i<int(landau_coeff[index].size()); i++)
+            grad += lambda*landau_coeff[index].at(i)*(landau_func[index].at(i)->gradient(m));
+        if(lambda==0)
+            break;
+    }
+    valarray<double> mr(3, 0), mphi(3, 0), mtheta(3, 0);
+    mr = (grad*m).sum()/(m*m).sum()*m;
+    mphi[0] = -m[1];
+    mphi[1] = m[0];
+    mphi = (grad*mphi).sum()/(mphi*mphi).sum()*m;
+    mtheta = grad-mr-mphi;
+    grad = dm*mr+dphi*mphi+dtheta*mtheta;
+    m -= h*grad;
 }
 
 Atom::~Atom(){

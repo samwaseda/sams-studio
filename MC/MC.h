@@ -2,6 +2,7 @@
 #define MC_H
 
 #include<random>
+#include<valarray>
 
 using namespace std;
 
@@ -38,17 +39,17 @@ struct Decic : Magnitude {
 } decic;
 
 struct Bilinear{
-    virtual valarray<double> value(valarray<double>*, valarray<double>*, valarray<double>*);
+    virtual double value(valarray<double>*, valarray<double>*, valarray<double>*);
     virtual valarray<double> gradient(valarray<double>*, valarray<double>*);
 };
 
 struct J_linear : Bilinear {
-    valarray<double> value(valarray<double>*, valarray<double>*, valarray<double>*);
+    double value(valarray<double>*, valarray<double>*, valarray<double>*);
     valarray<double> gradient(valarray<double>*, valarray<double>*);
 } j_linear;
 
 struct J_square : Bilinear {
-    valarray<double> value(valarray<double>*, valarray<double>*, valarray<double>*);
+    double value(valarray<double>*, valarray<double>*, valarray<double>*);
     valarray<double> gradient(valarray<double>*, valarray<double>*);
 } j_square;
 
@@ -58,7 +59,7 @@ struct J_square : Bilinear {
 class Atom{
     private:
         double mabs, mabs_old, theta, theta_old, phi, phi_old, E_current[2], dE_current[2], dm, dphi, dtheta, mmax;
-        valarray<double> m_old
+        valarray<double> m_old;
         vector<double> heisen_coeff[2], landau_coeff[2];
         vector<Magnitude*> landau_func[2];
         vector<Bilinear*> heisen_func[2];
@@ -76,7 +77,7 @@ class Atom{
         double dE(int, bool);   // index, force_compute
         void revoke();
         void set_landau_coeff(double, int, int);
-        void set_heisenberg_coeff(double*, double, int, int);
+        void set_heisenberg_coeff(valarray<double>*, double, int, int);
         void clear_landau_coeff(int);
         void clear_heisenberg_coeff(int);
         void activate_debug();
