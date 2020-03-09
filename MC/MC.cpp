@@ -232,7 +232,7 @@ void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
     dtheta = ddtheta;
 }
 
-void run_gradient_descent(double h, double lambda){
+double Atom::run_gradient_descent(double h, double lambda){
     valarray<double> grad(3, 0);
     for(int index=0; index<2; index++)
     {
@@ -241,7 +241,7 @@ void run_gradient_descent(double h, double lambda){
         for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
             grad -= lambda*heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->gradient(m_n[index].at(i_atom), &m);
         for(int i=0; i<int(landau_coeff[index].size()); i++)
-            grad += lambda*landau_coeff[index].at(i)*(landau_func[index].at(i)->gradient(m));
+            grad += lambda*landau_coeff[index].at(i)*(landau_func[index].at(i)->gradient(&m));
         if(lambda==0)
             break;
     }
@@ -253,6 +253,7 @@ void run_gradient_descent(double h, double lambda){
     mtheta = grad-mr-mphi;
     grad = dm*mr+dphi*mphi+dtheta*mtheta;
     m -= h*grad;
+    return sqrt((grad*grad).sum());
 }
 
 Atom::~Atom(){
@@ -532,6 +533,19 @@ void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dt
         throw invalid_argument("Length of vectors not consistent");
     for(int i=0; i<n_tot; i++)
         atom[i].set_magnitude(dm[i], dphi[i], dtheta[i]);
+}
+
+double MC::run_gradient_descent(int max_iter, double step_size=1.0, double decrement=0.99)
+{
+    double residual = 0;
+    for(int iter=0; iter<max_iter; iter++)
+    {
+        residual = 0;
+        for(int i_atom=0; i_atom<n_tot; i_atom++)
+            residual += atom[i_atom].run_gradient_descent(step_size, lambda);
+        step_size *= decrement;
+    }
+    return residual;
 }
 
 void MC::reset()

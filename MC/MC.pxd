@@ -27,4 +27,5 @@ cdef extern from "MC.h":
         double get_steps_per_second()
         double set_magnitude(vector[double], vector[double], vector[double]) except +
         int get_number_of_atoms()
+        double run_gradient_descent(int, double, double) except +
         void reset()

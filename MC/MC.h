@@ -83,7 +83,7 @@ class Atom{
         void activate_debug();
         void propose_new_state();
         void set_magnitude(double, double, double);
-        void run_gradient_descent(double, double);
+        double run_gradient_descent(double, double);
 };
 
 class average_energy
@@ -135,6 +135,7 @@ class MC{
         double get_steps_per_second();
         int get_number_of_atoms();
         void set_magnitude(vector<double>, vector<double>, vector<double>);
+        double run_gradient_descent(int, double, double);
         void reset();
 };
 
