@@ -274,6 +274,9 @@ void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
     dtheta = ddtheta;
 }
 
+void run_gradient_descent(double h, double lambda){
+}
+
 Atom::~Atom(){
     delete[] m_old;
     delete[] m;

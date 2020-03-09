@@ -82,7 +82,7 @@ class Atom{
         void activate_debug();
         void propose_new_state();
         void set_magnitude(double, double, double);
-        void run_gradient_descent(double);
+        void run_gradient_descent(double, double);
 };
 
 class average_energy
