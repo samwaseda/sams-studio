@@ -13,64 +13,70 @@ double Sextic::value(double xxx){ return quartic.value(xxx)*square.value(xxx); }
 double Octic::value(double xxx){ return quartic.value(xxx)*quartic.value(xxx); }
 double Decic::value(double xxx){ return sextic.value(xxx)*quartic.value(xxx); }
 
-valarray<double> Magnitude::gradient(valarray<double> *m){
-    return 0*(*m);
+valarray<double> Magnitude::gradient(valarray<double> &m){
+    return 0*m;
 }
 
-valarray<double> Square::gradient(valarray<double> *m){
-    return 2*(*m);
+valarray<double> Square::gradient(valarray<double> &m){
+    return 2*m;
 }
 
-valarray<double> Quartic::gradient(valarray<double> *m){
-    return 4*(*m).apply([](double x){return x*x;}).sum()*(*m);
+valarray<double> Quartic::gradient(valarray<double> &m){
+    return 4*m.apply([](double x){return x*x;}).sum()*m;
 }
 
-valarray<double> Sextic::gradient(valarray<double> *m){
-    return 6*(*m).apply([](double x){return x*x*x*x;}).sum()*(*m);
+valarray<double> Sextic::gradient(valarray<double> &m){
+    return 6*m.apply([](double x){return x*x*x*x;}).sum()*m;
 }
 
-valarray<double> Octic::gradient(valarray<double> *m){
-    return 8*(*m).apply([](double x){return x*x*x*x*x*x;}).sum()*(*m);
+valarray<double> Octic::gradient(valarray<double> &m){
+    return 8*m.apply([](double x){return x*x*x*x*x*x;}).sum()*m;
 }
 
-valarray<double> Decic::gradient(valarray<double> *m){
-    return 10*(*m).apply([](double x){return x*x*x*x*x*x*x*x;}).sum()*(*m);
+valarray<double> Decic::gradient(valarray<double> &m){
+    return 10*m.apply([](double x){return x*x*x*x*x*x*x*x;}).sum()*m;
 }
 
-double Bilinear::value(valarray<double> *m_one, valarray<double> *m_two, valarray<double> *m_three=NULL){
+double Bilinear::value(valarray<double> &m_one, valarray<double> &m_two){
     return 0;
 }
 
-valarray<double> Bilinear::gradient(valarray<double> *m_one, valarray<double> *m_two){
-    return 0*(*m_one);
+double Bilinear::diff(valarray<double> &m_one, valarray<double> &m_two, valarray<double> &m_three){
+    return 0;
 }
 
-double J_linear::value(valarray<double> *m_one, valarray<double> *m_two, valarray<double> *m_three=NULL){
-    if (m_three!=NULL)
-        return ((*m_one)*((*m_two)-(*m_three))).sum();
-    else
-        return ((*m_one)*(*m_two)).sum();
+valarray<double> Bilinear::gradient(valarray<double> &m_one, valarray<double> &m_two){
+    return 0*m_one;
 }
 
-valarray<double> J_linear::gradient(valarray<double> *m_one, valarray<double> *m_two){
-    return (*m_one);
+double J_linear::value(valarray<double> &m_one, valarray<double> &m_two){
+    return (m_one*m_two).sum();
 }
 
-double J_square::value(valarray<double> *m_one, valarray<double> *m_two, valarray<double> *m_three=NULL){
-    if (m_three!=NULL)
-        return square.value(j_linear.value(m_one, m_two))-square.value(j_linear.value(m_one, m_three));
-    else
-        return square.value(j_linear.value(m_one, m_two));
+double J_linear::diff(valarray<double> &m_one, valarray<double> &m_two, valarray<double> &m_three){
+    return (m_one*(m_two-m_three)).sum();
 }
 
-valarray<double> J_square::gradient(valarray<double> *m_one, valarray<double> *m_two){
-    return 2*(*m_two).apply([](double x){return x*x;}).sum()*(*m_one);
+valarray<double> J_linear::gradient(valarray<double> &m_one, valarray<double> &m_two){
+    return m_one;
+}
+
+double J_square::value(valarray<double> &m_one, valarray<double> &m_two){
+    return square.value(j_linear.value(m_one, m_two));
+}
+
+double J_square::diff(valarray<double> &m_one, valarray<double> &m_two, valarray<double> &m_three){
+    return square.value(j_linear.value(m_one, m_two))-square.value(j_linear.value(m_one, m_three));
+}
+
+valarray<double> J_square::gradient(valarray<double> &m_one, valarray<double> &m_two){
+    return 2*m_two.apply([](double x){return x*x;}).sum()*m_one;
 }
 
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
 {
-    m.resize(3, 0);
-    m_old.resize(3, 0);
+    m.resize(3);
+    m_old.resize(3);
     mabs = 1;
     phi = 0;
     theta = 0;
@@ -104,7 +110,7 @@ double Atom::E(int index=0, bool force_compute=false){
         return E_current[index];
     E_current[index] = 0;
     for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        E_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->value(m_n[index].at(i_atom), &m, NULL);
+        E_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->value(*m_n[index].at(i_atom), m);
     E_current[index] *= 0.5;
     for(int i=0; i<int(landau_coeff[index].size()); i++)
         E_current[index] += landau_coeff[index].at(i)*landau_func[index].at(i)->value(mabs);
@@ -120,7 +126,7 @@ double Atom::dE(int index=0, bool force_compute=false){
     count++;
     acc++;
     for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        dE_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->value(m_n[index].at(i_atom), &m, &m_old);
+        dE_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->diff(*m_n[index].at(i_atom), m, m_old);
     for(int i=0; i<int(landau_coeff[index].size()); i++)
         dE_current[index] += landau_coeff[index].at(i)*(landau_func[index].at(i)->value(mabs)-landau_func[index].at(i)->value(mabs_old));
     if(!debug)
@@ -233,25 +239,26 @@ void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
 }
 
 double Atom::run_gradient_descent(double h, double lambda){
-    valarray<double> grad(3, 0);
+    valarray<double> grad(3);
     for(int index=0; index<2; index++)
     {
         if(lambda==1 && index==0)
             continue;
         for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-            grad -= lambda*heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->gradient(m_n[index].at(i_atom), &m);
+            grad -= (1-index-lambda*(1-2*index))*heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->gradient(*m_n[index].at(i_atom), m);
         for(int i=0; i<int(landau_coeff[index].size()); i++)
-            grad += lambda*landau_coeff[index].at(i)*(landau_func[index].at(i)->gradient(&m));
+            grad += (1-index-lambda*(1-2*index))*landau_coeff[index].at(i)*(landau_func[index].at(i)->gradient(m));
         if(lambda==0)
             break;
     }
-    valarray<double> mr(3, 0), mphi(3, 0), mtheta(3, 0);
-    mr = (grad*m).sum()/(m*m).sum()*m;
-    mphi[0] = -m[1];
-    mphi[1] = m[0];
-    mphi = (grad*mphi).sum()/(mphi*mphi).sum()*m;
-    mtheta = grad-mr-mphi;
+    /*
+    valarray<double> mr = (grad*m).sum()/(m*m).sum()*m;
+    valarray<double> mphi = {-m[1], m[0], 0};
+    if((mphi*mphi).sum()>1.0e-8)
+        mphi = (grad*mphi).sum()/(mphi*mphi).sum()*mphi;
+    valarray<double> mtheta = grad-mr-mphi;
     grad = dm*mr+dphi*mphi+dtheta*mtheta;
+    */
     m -= h*grad;
     return sqrt((grad*grad).sum());
 }
@@ -535,14 +542,14 @@ void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dt
         atom[i].set_magnitude(dm[i], dphi[i], dtheta[i]);
 }
 
-double MC::run_gradient_descent(int max_iter, double step_size=1.0, double decrement=0.99)
+double MC::run_gradient_descent(int max_iter, double step_size=0.1, double decrement=0.99)
 {
     double residual = 0;
     for(int iter=0; iter<max_iter; iter++)
     {
         residual = 0;
         for(int i_atom=0; i_atom<n_tot; i_atom++)
-            residual += atom[i_atom].run_gradient_descent(step_size, lambda);
+            residual += atom[i_atom].run_gradient_descent(step_size, lambda*thermodynamic_integration());
         step_size *= decrement;
     }
     return residual;

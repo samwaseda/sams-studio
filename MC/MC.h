@@ -10,47 +10,50 @@ double zufall();
 
 struct Magnitude{
     virtual double value(double);
-    virtual valarray<double> gradient(valarray<double> *);
+    virtual valarray<double> gradient(valarray<double>&);
 };
 
 struct Square : Magnitude {
     double value(double);
-    valarray<double> gradient(valarray<double> *);
+    valarray<double> gradient(valarray<double>&);
 } square;
 
 struct Quartic : Magnitude {
     double value(double);
-    valarray<double> gradient(valarray<double> *);
+    valarray<double> gradient(valarray<double>&);
 } quartic;
 
 struct Sextic : Magnitude {
     double value(double);
-    valarray<double> gradient(valarray<double> *);
+    valarray<double> gradient(valarray<double>&);
 } sextic;
 
 struct Octic : Magnitude {
     double value(double);
-    valarray<double> gradient(valarray<double> *);
+    valarray<double> gradient(valarray<double>&);
 } octic;
 
 struct Decic : Magnitude {
     double value(double);
-    valarray<double> gradient(valarray<double> *);
+    valarray<double> gradient(valarray<double>&);
 } decic;
 
 struct Bilinear{
-    virtual double value(valarray<double>*, valarray<double>*, valarray<double>*);
-    virtual valarray<double> gradient(valarray<double>*, valarray<double>*);
+    virtual double value(valarray<double>&, valarray<double>&);
+    virtual double diff(valarray<double>&, valarray<double>&, valarray<double>&);
+    virtual valarray<double> gradient(valarray<double>&, valarray<double>&);
 };
 
 struct J_linear : Bilinear {
-    double value(valarray<double>*, valarray<double>*, valarray<double>*);
-    valarray<double> gradient(valarray<double>*, valarray<double>*);
+    double value(valarray<double>&, valarray<double>&);
+    double diff(valarray<double>&, valarray<double>&, valarray<double>&);
+    valarray<double> gradient(valarray<double>&, valarray<double>&);
 } j_linear;
 
 struct J_square : Bilinear {
-    double value(valarray<double>*, valarray<double>*, valarray<double>*);
-    valarray<double> gradient(valarray<double>*, valarray<double>*);
+    double value(valarray<double>&, valarray<double>&);
+    double diff(valarray<double>&, valarray<double>&, valarray<double>&);
+    valarray<double> gradient(valarray<double>&, valarray<double>&);
 } j_square;
 
 

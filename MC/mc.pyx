@@ -240,14 +240,14 @@ cdef class MC:
             dtheta = np.array(self.c_mc.get_number_of_atoms()*dtheta.tolist())
         self.c_mc.set_magnitude(dm, dphi, dtheta)
 
-    def run_gradient_descent(self, max_iter, step_size=1, decrement=0.99):
+    def run_gradient_descent(self, max_iter, step_size=0.1, decrement=0.99):
         """
             args:
                 max_iter (int): number of steps to perform
                 step_size (float): step size
                 decrement (float): decrement value
         """
-        self.c_mc.run_gradient_descent(max_iter, step_size, decrement)
+        return self.c_mc.run_gradient_descent(max_iter, step_size, decrement)
 
     def activate_debug(self):
         """
