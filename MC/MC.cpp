@@ -431,7 +431,7 @@ double MC::run_gradient_descent(int max_iter, double step_size=1, double decreme
             residual += atom[i_atom].run_gradient_descent(step_size, lambda*thermodynamic_integration());
         step_size *= decrement;
     }
-    double E_min_tmp = get_energy()/n_tot;
+    double E_min_tmp = get_energy();
     if(E_min>E_min_tmp)
         E_min = E_min_tmp;
     return residual;
