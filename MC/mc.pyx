@@ -248,7 +248,7 @@ cdef class MC:
             dtheta = np.array(self.c_mc.get_number_of_atoms()*dtheta.tolist())
         self.c_mc.set_magnitude(dm, dphi, dtheta)
 
-    def run_gradient_descent(self, max_iter=None, step_size=1, decrement=0.01, diff=1.0e-8):
+    def run_gradient_descent(self, max_iter=None, step_size=1, decrement=0.001, diff=1.0e-8):
         """
             args:
                 max_iter (int): number of steps to perform

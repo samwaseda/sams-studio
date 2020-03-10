@@ -433,7 +433,7 @@ double MC::get_energy(int index=0){
     return EE;
 }
 
-double MC::run_gradient_descent(int max_iter, double step_size=1, double decrement=0.01, double diff = 1.0e-8)
+double MC::run_gradient_descent(int max_iter, double step_size=1, double decrement=0.001, double diff = 1.0e-8)
 {
     reset();
     double residual = 0, dot_product_max = 0, dot_product;
