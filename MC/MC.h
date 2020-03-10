@@ -71,16 +71,16 @@ class Atom{
         bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m
         void update_flag(bool);
         void set_m(double, double, double);
-        double get_gradient_residual();
     public:
         valarray<double> m;
         valarray<double> get_gradient(double); // lambda
         Atom();
         ~Atom();
+        double get_gradient_residual();
         double get_acceptance_ratio();
         double E(int, bool);    // index, force_compute
         double dE(int, bool);   // index, force_compute
-        double run_gradient_descent(double, double, double); // h lambda diff
+        double run_gradient_descent(double, double); // h lambda diff
         void revoke();
         void set_landau_coeff(double, int, int);
         void set_heisenberg_coeff(valarray<double>*, double, int, int);
@@ -128,6 +128,7 @@ class MC{
         void set_eta(double);
         double get_eta();
         vector<double> get_magnetic_moments();
+        vector<double> get_magnetic_gradients();
         void set_magnetic_moments(vector<double>);
         void set_landau_coeff(vector<double>, int, int);
         void set_heisenberg_coeff(vector<double>, vector<int>, vector<int>, int, int);
@@ -141,7 +142,7 @@ class MC{
         double get_steps_per_second();
         int get_number_of_atoms();
         void set_magnitude(vector<double>, vector<double>, vector<double>);
-        double run_gradient_descent(int, double, double);
+        double run_gradient_descent(int, double, double, double);
         void reset();
 };
 

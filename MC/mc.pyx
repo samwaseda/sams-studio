@@ -95,6 +95,14 @@ cdef class MC:
         self.clear_landau_coeff()
         self.clear_landau_coeff(1)
 
+    def get_magnetic_gradients(self):
+        """
+            Returns:
+                nx3 array of magnetic gradients
+        """
+        m = self.c_mc.get_magnetic_gradients()
+        return np.array(m).reshape(-1, 3)
+
     def get_magnetic_moments(self):
         """
             Returns:
@@ -240,13 +248,15 @@ cdef class MC:
             dtheta = np.array(self.c_mc.get_number_of_atoms()*dtheta.tolist())
         self.c_mc.set_magnitude(dm, dphi, dtheta)
 
-    def run_gradient_descent(self, max_iter, step_size=1, decrement=0.01, diff=1.0e-8):
+    def run_gradient_descent(self, max_iter=None, step_size=1, decrement=0.01, diff=1.0e-8):
         """
             args:
                 max_iter (int): number of steps to perform
                 step_size (float): step size
                 decrement (float): decrement value
         """
+        if max_iter is None:
+            max_iter = self.c_mc.get_number_of_atoms();
         return self.c_mc.run_gradient_descent(max_iter, step_size, decrement, diff)
 
     def activate_debug(self):

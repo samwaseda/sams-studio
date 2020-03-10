@@ -265,7 +265,7 @@ valarray<double> Atom::get_gradient(double lambda){
         mphi = (grad*mphi).sum()/(mphi*mphi).sum()*mphi;
     valarray<double> mtheta = grad-mr-mphi;
     grad = dm*mr+dphi*mphi+dtheta*mtheta;
-    return grad
+    return grad;
 }
 
 double Atom::get_gradient_residual(){
@@ -273,7 +273,8 @@ double Atom::get_gradient_residual(){
 }
 
 double Atom::run_gradient_descent(double h, double lambda){
-    valarray<double> grad(3) = get_gradient(lambda);
+    valarray<double> grad(3);
+    grad = get_gradient(lambda);
     m -= h*grad;
     update_polar_coordinates();
     double return_value = (gradient*grad).sum();
@@ -435,7 +436,7 @@ double MC::get_energy(int index=0){
 double MC::run_gradient_descent(int max_iter, double step_size=1, double decrement=0.01, double diff = 1.0e-8)
 {
     reset();
-    double residual = 0, dot_product_max, dot_product;
+    double residual = 0, dot_product_max = 0, dot_product;
     for(int iter=0; iter<max_iter; iter++)
     {
         residual = 0;
@@ -446,7 +447,7 @@ double MC::run_gradient_descent(int max_iter, double step_size=1, double decreme
                 dot_product_max = dot_product;
             residual += atom[i_atom].get_gradient_residual();
         }
-        if(dot_product_max<diff)
+        if(iter>0 && dot_product_max<diff)
             iter = max_iter;
         if(residual>0)
             step_size *= 1+decrement;
@@ -456,7 +457,7 @@ double MC::run_gradient_descent(int max_iter, double step_size=1, double decreme
     double E_min_tmp = get_energy();
     if(E_min>E_min_tmp)
         E_min = E_min_tmp;
-    return residual;
+    return dot_product_max;
 }
 
 void MC::prepare_qmc(double T_in, int number_of_iterations){
@@ -544,6 +545,18 @@ vector<double> MC::get_magnetic_moments(){
     for(int i_atom=0; i_atom<n_tot; i_atom++)
         for(int ix=0; ix<3; ix++)
             m.at(i_atom*3+ix) = atom[i_atom].m[ix];
+    return m;
+}
+
+vector<double> MC::get_magnetic_gradients(){
+    vector<double> m;
+    valarray<double> grad;
+    for(int i_atom=0; i_atom<n_tot; i_atom++)
+    {
+        grad = atom[i_atom].get_gradient(lambda);
+        for(int ix=0; ix<3; ix++)
+            m.at(i_atom*3+ix) = grad[ix];
+    }
     return m;
 }
 
