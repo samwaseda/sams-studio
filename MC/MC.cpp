@@ -77,6 +77,7 @@ Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
 {
     m.resize(3);
     m_old.resize(3);
+    gradient.resize(3);
     mabs = 1;
     phi = 0;
     theta = 0;
@@ -245,7 +246,7 @@ void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
     dtheta = ddtheta;
 }
 
-double Atom::run_gradient_descent(double h, double lambda){
+valarray<double> Atom::get_gradient(double lambda){
     valarray<double> grad(3);
     for(int index=0; index<2; index++)
     {
@@ -264,9 +265,20 @@ double Atom::run_gradient_descent(double h, double lambda){
         mphi = (grad*mphi).sum()/(mphi*mphi).sum()*mphi;
     valarray<double> mtheta = grad-mr-mphi;
     grad = dm*mr+dphi*mphi+dtheta*mtheta;
+    return grad
+}
+
+double Atom::get_gradient_residual(){
+    return sqrt((gradient*gradient).sum());
+}
+
+double Atom::run_gradient_descent(double h, double lambda){
+    valarray<double> grad(3) = get_gradient(lambda);
     m -= h*grad;
     update_polar_coordinates();
-    return sqrt((grad*grad).sum());
+    double return_value = (gradient*grad).sum();
+    gradient = grad;
+    return return_value;
 }
 
 Atom::~Atom(){
@@ -420,16 +432,26 @@ double MC::get_energy(int index=0){
     return EE;
 }
 
-double MC::run_gradient_descent(int max_iter, double step_size=1, double decrement=1.0-1.0e-6)
+double MC::run_gradient_descent(int max_iter, double step_size=1, double decrement=0.01, double diff = 1.0e-8)
 {
     reset();
-    double residual = 0;
+    double residual = 0, dot_product_max, dot_product;
     for(int iter=0; iter<max_iter; iter++)
     {
         residual = 0;
         for(int i_atom=0; i_atom<n_tot; i_atom++)
-            residual += atom[i_atom].run_gradient_descent(step_size, lambda*thermodynamic_integration());
-        step_size *= decrement;
+        {
+            dot_product = atom[i_atom].run_gradient_descent(step_size, lambda*thermodynamic_integration());
+            if(i_atom==0 || dot_product_max<dot_product)
+                dot_product_max = dot_product;
+            residual += atom[i_atom].get_gradient_residual();
+        }
+        if(dot_product_max<diff)
+            iter = max_iter;
+        if(residual>0)
+            step_size *= 1+decrement;
+        else if (residual<0)
+            step_size *= 1-decrement;
     }
     double E_min_tmp = get_energy();
     if(E_min>E_min_tmp)

@@ -62,7 +62,7 @@ struct J_square : Bilinear {
 class Atom{
     private:
         double mabs, mabs_old, theta, theta_old, phi, phi_old, E_current[2], dE_current[2], dm, dphi, dtheta, mmax;
-        valarray<double> m_old;
+        valarray<double> m_old, gradient;
         vector<double> heisen_coeff[2], landau_coeff[2];
         vector<Magnitude*> landau_func[2];
         vector<Bilinear*> heisen_func[2];
@@ -71,13 +71,16 @@ class Atom{
         bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m
         void update_flag(bool);
         void set_m(double, double, double);
+        double get_gradient_residual();
     public:
         valarray<double> m;
+        valarray<double> get_gradient(double); // lambda
         Atom();
         ~Atom();
         double get_acceptance_ratio();
         double E(int, bool);    // index, force_compute
         double dE(int, bool);   // index, force_compute
+        double run_gradient_descent(double, double, double); // h lambda diff
         void revoke();
         void set_landau_coeff(double, int, int);
         void set_heisenberg_coeff(valarray<double>*, double, int, int);
@@ -87,7 +90,6 @@ class Atom{
         void propose_new_state();
         void set_magnitude(double, double, double);
         void update_polar_coordinates();
-        double run_gradient_descent(double, double);
 };
 
 class average_energy
