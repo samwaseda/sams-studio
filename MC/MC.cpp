@@ -540,8 +540,7 @@ double MC::get_steps_per_second(){
 }
 
 vector<double> MC::get_magnetic_moments(){
-    vector<double> m;
-    m.resize(n_tot*3);
+    vector<double> m(n_tot*3);
     for(int i_atom=0; i_atom<n_tot; i_atom++)
         for(int ix=0; ix<3; ix++)
             m.at(i_atom*3+ix) = atom[i_atom].m[ix];
@@ -549,8 +548,8 @@ vector<double> MC::get_magnetic_moments(){
 }
 
 vector<double> MC::get_magnetic_gradients(){
-    vector<double> m;
-    valarray<double> grad;
+    vector<double> m(n_tot*3);
+    valarray<double> grad(3);
     for(int i_atom=0; i_atom<n_tot; i_atom++)
     {
         grad = atom[i_atom].get_gradient(lambda);
