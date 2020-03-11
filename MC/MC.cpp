@@ -489,7 +489,7 @@ void MC::set_eta(double eta_in){
 
 void MC::run(double T_in, int number_of_iterations=1){
     double kBT = kB*T_in, dEE_tot[2], EE_tot[2];
-    clock_t begin = clock();
+    auto begin = std::chrono::high_resolution_clock::now();
     int ID_rand;
     for (int i=0; i<2; i++)
     {
@@ -532,7 +532,9 @@ void MC::run(double T_in, int number_of_iterations=1){
         if(thermodynamic_integration())
             E_tot.add(dEE_tot[1], false, 1);
     }
-    steps_per_second = n_tot*number_of_iterations/(double)(clock()-begin)*CLOCKS_PER_SEC;
+    auto stop = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::seconds>(stop - begin);
+    steps_per_second = n_tot*number_of_iterations/duration.count();
 }
 
 double MC::get_steps_per_second(){
