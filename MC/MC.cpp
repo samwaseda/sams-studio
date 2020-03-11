@@ -541,8 +541,8 @@ void MC::run(double T_in, int number_of_iterations=1){
             E_tot.add(dEE_tot[1], false, 1);
     }
     auto stop = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::seconds>(stop - begin);
-    steps_per_second = n_tot*number_of_iterations/duration.count();
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop - begin);
+    steps_per_second = n_tot*number_of_iterations/duration.count()/1e6;
 }
 
 double MC::get_steps_per_second(){
