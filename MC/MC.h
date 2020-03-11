@@ -71,7 +71,7 @@ class Atom{
         int acc, count;
         bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m
         void update_flag(bool);
-        void set_m(double, double, double);
+        void set_m(double, double, double, bool diff=false);
     public:
         valarray<double> m;
         valarray<double> get_gradient(double); // lambda

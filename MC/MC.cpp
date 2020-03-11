@@ -135,17 +135,24 @@ double Atom::dE(int index=0, bool force_compute=false){
     return dE_current[index];
 }
 
-void Atom::set_m(double mabs_new, double theta_new, double phi_new){
+void Atom::set_m(double mabs_new, double theta_new, double phi_new, bool diff){
     update_flag(false);
-    if(abs(mabs)>mmax)
-        throw invalid_argument("Magnetic moment exploding");
     mabs_old = mabs;
     theta_old = theta;
     phi_old = phi;
     m_old = m;
-    mabs = mabs_new;
-    theta = theta_new;
-    phi = phi_new;
+    if(diff){
+        mabs += mabs_new;
+        theta += theta_new;
+        phi += phi_new;
+    }
+    else{
+        mabs = mabs_new;
+        theta = theta_new;
+        phi = phi_new;
+    }
+    if(abs(mabs)>mmax)
+        throw invalid_argument("Magnetic moment exploding");
     m[0] = mabs*cos(phi)*sin(theta);
     m[1] = mabs*sin(phi)*sin(theta);
     m[2] = mabs*cos(theta);
@@ -259,12 +266,6 @@ valarray<double> Atom::get_gradient(double lambda){
         if(lambda==0)
             break;
     }
-    valarray<double> mr = (grad*m).sum()/(m*m).sum()*m;
-    valarray<double> mphi = {-m[1], m[0], 0};
-    if((mphi*mphi).sum()>1.0e-8)
-        mphi = (grad*mphi).sum()/(mphi*mphi).sum()*mphi;
-    valarray<double> mtheta = grad-mr-mphi;
-    grad = dm*mr+dphi*mphi+dtheta*mtheta;
     return grad;
 }
 
@@ -275,8 +276,15 @@ double Atom::get_gradient_residual(){
 double Atom::run_gradient_descent(double h, double lambda){
     valarray<double> grad(3);
     grad = get_gradient(lambda);
-    m -= h*grad;
-    update_polar_coordinates();
+    valarray<double> mr = m/mabs;
+    valarray<double> mphi = {-m[1], m[0], 0};
+    valarray<double> mtheta = {m[0]*m[2], m[1]*m[2], -(m[0]*m[0]+m[1]*m[1])};
+    if((mphi*mphi).sum()>1.0e-8)
+        mphi = mphi/sqrt((mphi*mphi).sum());
+    if((mtheta*mtheta).sum()>1.0e-8)
+        mtheta = mtheta/sqrt((mtheta*mtheta).sum());
+    set_m(-h*dm*(grad*mr).sum(), -h*dtheta*(grad*mtheta).sum(), -h*dphi*(grad*mphi).sum(), true);
+    grad = m-m_old;
     double return_value = (gradient*grad).sum();
     gradient = grad;
     return return_value;
