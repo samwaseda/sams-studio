@@ -11,9 +11,10 @@ Download all files and run `python setup.py build_ext --inplace`.
 Suppose we have a bcc Fe system created by [pyiron](http://github.com/pyiron/pyiron) (e.g. via `structure = Project('.').create_structure('Fe', 'bcc', 2.83).repeat(10)`) and a Heisenberg coefficient `J=0.1` (eV). Then the magnetic interactions can be calculated by:
 
 ```
-import numpy as np
+from pyiron import Project
 from mc import MC
 
+structure = Project('.').create_structure('Fe', 'bcc', 2.85)
 J = 0.1 # eV
 first_shell_tensor = structure.get_shell_matrix(1)
 
