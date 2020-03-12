@@ -118,12 +118,11 @@ class MC{
         average_energy E_tot;
         bool thermodynamic_integration();
         bool accept(int, double, double);
-        bool preparing_qmc();
+        bool bose_einstein();
     public:
         MC();
         ~MC();
         void create_atoms(int);
-        void prepare_qmc(double, int);
         void activate_debug();
         void run(double, int);
         void set_lambda(double);
@@ -141,6 +140,7 @@ class MC{
         double get_energy(int);
         double get_mean_energy(int);
         double get_energy_variance(int);
+        double get_ground_state_energy();
         double get_steps_per_second();
         int get_number_of_atoms();
         void set_magnitude(vector<double>, vector<double>, vector<double>);

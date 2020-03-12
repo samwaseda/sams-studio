@@ -415,9 +415,9 @@ bool MC::accept(int ID_rand, double kBT, double E_current){
         return true;
     else if(kBT==0)
         return false;
-    if(preparing_qmc())
+    if(bose_einstein())
     {
-        if((exp((E_current-E_min)/kBT/n_tot)-1)/(exp(((E_current-E_min)/n_tot+dE)/kBT)-1)>rand()/(double)RAND_MAX)
+        if((exp((E_current-get_ground_state_energy())/kBT/n_tot)-1)/(exp(((E_current-get_ground_state_energy())/n_tot+dE)/kBT)-1)>rand()/(double)RAND_MAX)
             return true;
         else
             return false;
@@ -427,7 +427,7 @@ bool MC::accept(int ID_rand, double kBT, double E_current){
     return false;
 }
 
-bool MC::preparing_qmc()
+bool MC::bose_einstein()
 {
     if(eta>0)
         return false;
@@ -463,26 +463,19 @@ double MC::run_gradient_descent(int max_iter, double step_size=1, double decreme
             step_size *= 1-decrement;
     }
     double E_min_tmp = get_energy();
-    if(E_min>E_min_tmp)
+    if(get_ground_state_energy()>E_min_tmp)
         E_min = E_min_tmp;
     return dot_product_max;
 }
 
-void MC::prepare_qmc(double T_in, int number_of_iterations){
-    if(thermodynamic_integration())
-        throw invalid_argument("QMC+Thermodynamic integration now allowed");
-    eta = 0;
+double MC::get_ground_state_energy(){
     if(E_min==0)
     {
         vector<double> m = get_magnetic_moments();
-        run_gradient_descent(number_of_iterations);
-        E_min = get_energy();
+        run_gradient_descent(n_tot*n_tot);
         set_magnetic_moments(m);
     }
-    run(T_in, number_of_iterations);
-    reset();
-    run(T_in, number_of_iterations);
-    eta = (E_tot.E_mean()-E_min)/n_tot/(kB*T_in);
+    return E_min;
 }
 
 double MC::get_eta(){

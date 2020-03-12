@@ -5,6 +5,35 @@ from libcpp.vector cimport vector
 import numpy as np
 
 cdef class MC:
+    """
+
+        Magnetic Metropolis Monte Carlo module. It does not have to work with pyiron, but for convenience
+        it is strongly recommended to do so. Here's a short example:
+
+            from pyiron import Project
+            from mc import MC
+
+            structure = Project('.').create_structure(element='Fe',
+                                  bravais_basis='bcc',
+                                  lattice_constant=2.85)
+            structure.set_repeat(10)
+            J = 0.1 # eV
+            first_shell_tensor = structure.get_shell_matrix(1)
+
+            mc = MC(len(structure))
+            mc.set_heisenberg_coeff(J*first_shell_tensor)
+
+            mc.run(temperature=300, number_of_iterations=1000)
+
+        The results can be analysed by attributes like `get_mean_energy()` or `get_magnetic_moments()`.
+
+        The Hamiltonian H is given in the form:
+
+        H = -sum_ij J_ij*(m_i*m_j)^deg + sum_i A_i*m_i^deg
+
+        The first coefficients (J_ij) can be inserted with set_heisenberg_coeff and the magnitude dependent
+        terms (A_i) can be set via set_landau_coeff. Beware of the signs for the Heisenberg coefficients
+    """
     cdef MCcpp c_mc
 
     def __cinit__(self, number_of_atoms):
@@ -158,11 +187,13 @@ cdef class MC:
         """
         return self.c_mc.get_energy(index)
 
-    def get_mean_energy(self, index=0):
+    def get_mean_energy(self, index=0, per_atom=False):
         """
             Returns:
                 Mean energy value since the last reset (s. reset())
         """
+        if per_atom:
+            return self.c_mc.get_mean_energy(index)/self.c_mc.get_number_of_atoms()
         return self.c_mc.get_mean_energy(index)
 
     def get_energy_variance(self, index=0):
@@ -191,17 +222,30 @@ cdef class MC:
         """
         return self.c_mc.get_eta()
 
-    def prepare_qmc(self, temperature, number_of_iterations=1, reset=True):
+    def get_ground_state_energy(self, per_atom=False):
+        """
+            Args:
+                per_atom (bool): return per atom energy instead of total energy
+
+            Returns:
+                energy value
+        """
+
+    def prepare_qmc(self, temperature, number_of_iterations=1, run_twice=True):
         """
             Args:
                 temperature (float): Temperature in K
                 number_of_iterations (int): Number of MC steps (internally multiplied
                                             by the number of atoms)
-                reset (bool): Resets statistics (s. get_mean_energy() etc.)
+                run_twice (bool): run twice to make system converge in the first run
+                                  and measure energy in the second run
         """
-        if reset:
-            self.c_mc.reset()
-        self.c_mc.prepare_qmc(temperature, number_of_iterations)
+        self.set_eta(0);
+        if run_twice:
+            self.run(temperature, number_of_iterations)
+        self.run(temperature, number_of_iterations)
+        self.set_eta((self.get_mean_energy(per_atom=True)
+                      -self.get_ground_state_energy(per_atom=True))/(8.617e-5*temperature))
 
     def set_lambda(self, val):
         """
