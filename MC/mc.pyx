@@ -180,11 +180,13 @@ cdef class MC:
             return np.array(self.c_mc.get_acceptance_ratios())
         return self.c_mc.get_acceptance_ratio()
 
-    def get_energy(self, index=0):
+    def get_energy(self, index=0, per_atom=False):
         """
             Returns:
                 Energy value of current snapshot in eV
         """
+        if per_atom:
+            return self.c_mc.get_energy(index)/self.c_mc.get_number_of_atoms()
         return self.c_mc.get_energy(index)
 
     def get_mean_energy(self, index=0, per_atom=False):
@@ -196,11 +198,13 @@ cdef class MC:
             return self.c_mc.get_mean_energy(index)/self.c_mc.get_number_of_atoms()
         return self.c_mc.get_mean_energy(index)
 
-    def get_energy_variance(self, index=0):
+    def get_energy_variance(self, index=0, per_atom=False):
         """
             Returns:
                 Energy variance since the last reset (s. reset())
         """
+        if per_atom:
+            return self.c_mc.get_energy_variance(index)/self.c_mc.get_number_of_atoms()
         return self.c_mc.get_energy_variance(index)
 
     def revoke_qmc(self):
@@ -230,6 +234,9 @@ cdef class MC:
             Returns:
                 energy value
         """
+        if per_atom:
+            return self.c_mc.get_ground_state_energy()/self.c_mc.get_number_of_atoms()
+        return self.c_mc.get_ground_state_energy()
 
     def prepare_qmc(self, temperature, number_of_iterations=1, run_twice=True):
         """
@@ -240,9 +247,12 @@ cdef class MC:
                 run_twice (bool): run twice to make system converge in the first run
                                   and measure energy in the second run
         """
-        self.set_eta(0);
         if run_twice:
+            self.set_eta(1)
+            self.run(temperature, 1)
+            self.set_eta(0)
             self.run(temperature, number_of_iterations)
+        self.set_eta(0)
         self.run(temperature, number_of_iterations)
         self.set_eta((self.get_mean_energy(per_atom=True)
                       -self.get_ground_state_energy(per_atom=True))/(8.617e-5*temperature))
@@ -300,7 +310,7 @@ cdef class MC:
                 decrement (float): decrement value
         """
         if max_iter is None:
-            max_iter = self.c_mc.get_number_of_atoms();
+            max_iter = self.c_mc.get_number_of_atoms()**2;
         return self.c_mc.run_gradient_descent(max_iter, step_size, decrement, diff)
 
     def activate_debug(self):

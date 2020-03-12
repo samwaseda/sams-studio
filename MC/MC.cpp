@@ -444,28 +444,28 @@ double MC::get_energy(int index=0){
 double MC::run_gradient_descent(int max_iter, double step_size=1, double decrement=0.001, double diff = 1.0e-8)
 {
     reset();
-    double residual = 0, dot_product_max = 0, dot_product;
+    double residual = 0, residual_max = 0, dot_product = 0;
     for(int iter=0; iter<max_iter; iter++)
     {
-        residual = 0;
+        dot_product = 0;
         for(int i_atom=0; i_atom<n_tot; i_atom++)
         {
-            dot_product = atom[i_atom].run_gradient_descent(step_size, lambda*thermodynamic_integration());
-            if(i_atom==0 || dot_product_max<dot_product)
-                dot_product_max = dot_product;
-            residual += atom[i_atom].get_gradient_residual();
+            dot_product += atom[i_atom].run_gradient_descent(step_size, lambda*thermodynamic_integration());
+            residual = atom[i_atom].get_gradient_residual();
+            if(i_atom==0 || residual_max<residual)
+                residual_max = residual;
         }
-        if(iter>0 && dot_product_max<diff)
+        if(iter>0 && residual_max<diff)
             iter = max_iter;
-        if(residual>0)
+        if(dot_product>0)
             step_size *= 1+decrement;
-        else if (residual<0)
+        else if (dot_product<0)
             step_size *= 1-decrement;
     }
     double E_min_tmp = get_energy();
-    if(get_ground_state_energy()>E_min_tmp)
+    if(E_min>E_min_tmp)
         E_min = E_min_tmp;
-    return dot_product_max;
+    return residual_max;
 }
 
 double MC::get_ground_state_energy(){
