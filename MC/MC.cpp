@@ -62,7 +62,7 @@ valarray<double> J_linear::gradient(valarray<double> &m_one, valarray<double> &m
 }
 
 double J_square::value(valarray<double> &m_one, valarray<double> &m_two){
-    return (m_one.apply([](double x){return x*x;})*m_two.apply([](double x){return x*x;})).sum();
+    return (m_one*m_one*m_two*m_two).sum();
 }
 
 double J_square::diff(valarray<double> &m_one, valarray<double> &m_two, valarray<double> &m_three){
@@ -535,7 +535,7 @@ void MC::run(double T_in, int number_of_iterations=1){
     }
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - begin);
-    steps_per_second = n_tot*number_of_iterations/duration.count()/1e6;
+    steps_per_second = n_tot*number_of_iterations/double(duration.count())/1.0e6;
 }
 
 double MC::get_steps_per_second(){
