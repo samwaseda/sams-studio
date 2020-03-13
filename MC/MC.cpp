@@ -62,12 +62,11 @@ valarray<double> J_linear::gradient(valarray<double> &m_one, valarray<double> &m
 }
 
 double J_square::value(valarray<double> &m_one, valarray<double> &m_two){
-    return j_linear.value(m_one.apply([](double x){return x*x;}),
-                          m_two.apply([](double x){return x*x;}));
+    return (m_one.apply([](double x){return x*x;})*m_two.apply([](double x){return x*x;})).sum();
 }
 
 double J_square::diff(valarray<double> &m_one, valarray<double> &m_two, valarray<double> &m_three){
-    return square.value(j_linear.value(m_one, m_two))-square.value(j_linear.value(m_one, m_three));
+    return j_square.value(m_one, m_two)-j_square.value(m_one, m_three);
 }
 
 valarray<double> J_square::gradient(valarray<double> &m_one, valarray<double> &m_two){
