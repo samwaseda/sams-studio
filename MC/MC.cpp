@@ -62,7 +62,8 @@ valarray<double> J_linear::gradient(valarray<double> &m_one, valarray<double> &m
 }
 
 double J_square::value(valarray<double> &m_one, valarray<double> &m_two){
-    return square.value(j_linear.value(m_one, m_two));
+    return j_linear.value(m_one.apply([](double x){return x*x;}),
+                          m_two.apply([](double x){return x*x;}));
 }
 
 double J_square::diff(valarray<double> &m_one, valarray<double> &m_two, valarray<double> &m_three){
@@ -70,7 +71,7 @@ double J_square::diff(valarray<double> &m_one, valarray<double> &m_two, valarray
 }
 
 valarray<double> J_square::gradient(valarray<double> &m_one, valarray<double> &m_two){
-    return 2*m_two.apply([](double x){return x*x;}).sum()*m_one;
+    return 2*m_two*m_one*m_one;
 }
 
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
