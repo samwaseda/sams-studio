@@ -29,7 +29,7 @@ cdef class MC:
 
         The Hamiltonian H is given in the form:
 
-        H = -sum_ij J_ij*(m_i*m_j)^deg + sum_i A_i*m_i^deg
+        H = -0.5*sum_ij J_ij*(m_i*m_j)^deg + sum_i A_i*m_i^deg
 
         The first coefficients (J_ij) can be inserted with set_heisenberg_coeff and the magnitude dependent
         terms (A_i) can be set via set_landau_coeff. Beware of the signs for the Heisenberg coefficients
