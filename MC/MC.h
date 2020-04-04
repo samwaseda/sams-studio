@@ -9,6 +9,8 @@ using namespace std;
 
 double zufall();
 
+double sq_mag(valarray<double>&);
+
 struct Magnitude{
     virtual double value(double);
     virtual valarray<double> gradient(valarray<double>&);
@@ -39,23 +41,29 @@ struct Decic : Magnitude {
     valarray<double> gradient(valarray<double>&);
 } decic;
 
-struct Bilinear{
+struct Product{
     virtual double value(valarray<double>&, valarray<double>&);
     virtual double diff(valarray<double>&, valarray<double>&, valarray<double>&);
     virtual valarray<double> gradient(valarray<double>&, valarray<double>&);
 };
 
-struct J_linear : Bilinear {
+struct J_lin_lin : Product {
     double value(valarray<double>&, valarray<double>&);
     double diff(valarray<double>&, valarray<double>&, valarray<double>&);
     valarray<double> gradient(valarray<double>&, valarray<double>&);
-} j_linear;
+} j_lin_lin;
 
-struct J_square : Bilinear {
+struct J_cub_lin : Product {
     double value(valarray<double>&, valarray<double>&);
     double diff(valarray<double>&, valarray<double>&, valarray<double>&);
     valarray<double> gradient(valarray<double>&, valarray<double>&);
-} j_square;
+} j_cub_lin;
+
+struct J_qui_lin : Product {
+    double value(valarray<double>&, valarray<double>&);
+    double diff(valarray<double>&, valarray<double>&, valarray<double>&);
+    valarray<double> gradient(valarray<double>&, valarray<double>&);
+} j_qui_lin;
 
 
 // double J_cross_prod(double*, double*, double*);
@@ -66,7 +74,7 @@ class Atom{
         valarray<double> m_old, gradient;
         vector<double> heisen_coeff[2], landau_coeff[2];
         vector<Magnitude*> landau_func[2];
-        vector<Bilinear*> heisen_func[2];
+        vector<Product*> heisen_func[2];
         vector<valarray<double> * > m_n[2];
         int acc, count;
         bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m

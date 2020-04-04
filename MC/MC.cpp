@@ -6,6 +6,10 @@ double zufall(){
     return 1.0-2.0*(rand()/(double)RAND_MAX);
 }
 
+double sq_mag(valarray<double> &m){
+    return (m*m).sum();
+}
+
 double Magnitude::value(double xxx){return 0;}
 double Square::value(double xxx){ return xxx*xxx; }
 double Quartic::value(double xxx){ return square.value(xxx)*square.value(xxx); }
@@ -37,40 +41,52 @@ valarray<double> Decic::gradient(valarray<double> &m){
     return 10*m.apply([](double x){return x*x*x*x*x*x*x*x;}).sum()*m;
 }
 
-double Bilinear::value(valarray<double> &m_one, valarray<double> &m_two){
+double Product::value(valarray<double> &m_neigh, valarray<double> &m_me){
     return 0;
 }
 
-double Bilinear::diff(valarray<double> &m_one, valarray<double> &m_two, valarray<double> &m_three){
+double Product::diff(valarray<double> &m_neigh, valarray<double> &m_new, valarray<double> &m_old){
     return 0;
 }
 
-valarray<double> Bilinear::gradient(valarray<double> &m_one, valarray<double> &m_two){
-    return 0*m_one;
+valarray<double> Product::gradient(valarray<double> &m_neigh, valarray<double> &m_me){
+    return 0*m_neigh;
 }
 
-double J_linear::value(valarray<double> &m_one, valarray<double> &m_two){
-    return (m_one*m_two).sum();
+double J_lin_lin::value(valarray<double> &m_neigh, valarray<double> &m_me){
+    return (m_neigh*m_me).sum();
 }
 
-double J_linear::diff(valarray<double> &m_one, valarray<double> &m_two, valarray<double> &m_three){
-    return (m_one*(m_two-m_three)).sum();
+double J_lin_lin::diff(valarray<double> &m_neigh, valarray<double> &m_new, valarray<double> &m_old){
+    return (m_neigh*(m_new-m_old)).sum();
 }
 
-valarray<double> J_linear::gradient(valarray<double> &m_one, valarray<double> &m_two){
-    return m_one;
+valarray<double> J_lin_lin::gradient(valarray<double> &m_neigh, valarray<double> &m_me){
+    return m_neigh;
 }
 
-double J_square::value(valarray<double> &m_one, valarray<double> &m_two){
-    return (m_one*m_one*m_two*m_two).sum();
+double J_cub_lin::value(valarray<double> &m_neigh, valarray<double> &m_me){
+    return 0.5*(sq_mag(m_neigh)+sq_mag(m_me))*(m_neigh*m_me).sum();
 }
 
-double J_square::diff(valarray<double> &m_one, valarray<double> &m_two, valarray<double> &m_three){
-    return j_square.value(m_one, m_two)-j_square.value(m_one, m_three);
+double J_cub_lin::diff(valarray<double> &m_neigh, valarray<double> &m_new, valarray<double> &m_old){
+    return 0.5*(sq_mag(m_new)*(m_new*m_neigh).sum()-sq_mag(m_old)*(m_old*m_neigh).sum()+sq_mag(m_neigh)*((m_new-m_old)*m_neigh).sum());
 }
 
-valarray<double> J_square::gradient(valarray<double> &m_one, valarray<double> &m_two){
-    return 2*m_two*m_one*m_one;
+valarray<double> J_cub_lin::gradient(valarray<double> &m_neigh, valarray<double> &m_me){
+    return m_me*((m_me*m_neigh).sum()+0.5*(sq_mag(m_me)+sq_mag(m_neigh)));
+}
+
+double J_qui_lin::value(valarray<double> &m_neigh, valarray<double> &m_me){
+    return 0.5*(square.value(sq_mag(m_neigh))+square.value(sq_mag(m_me)))*(m_neigh*m_me).sum();
+}
+
+double J_qui_lin::diff(valarray<double> &m_neigh, valarray<double> &m_new, valarray<double> &m_old){
+    return 0.5*(square.value(sq_mag(m_new))*(m_new*m_neigh).sum()-square.value(sq_mag(m_old))*(m_old*m_neigh).sum()+square.value(sq_mag(m_neigh))*((m_new-m_old)*m_neigh).sum());
+}
+
+valarray<double> J_qui_lin::gradient(valarray<double> &m_neigh, valarray<double> &m_me){
+    return m_me*(2*(m_me*m_neigh).sum()+sq_mag(m_me)+sq_mag(m_neigh));
 }
 
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
@@ -211,10 +227,7 @@ void Atom::set_heisenberg_coeff(valarray<double>* mm, double JJ, int deg=1, int 
     }
     switch(deg){
         case 1:
-            heisen_func[index].push_back(&j_linear);
-            break;
-        case 2:
-            heisen_func[index].push_back(&j_square);
+            heisen_func[index].push_back(&j_lin_lin);
             break;
         default:
             throw invalid_argument("Pairwise interaction not found");
