@@ -219,20 +219,15 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     landau_coeff[index].push_back(value);
     switch(deg){
         case 2:
-            landau_func[index].push_back(&square);
-            break;
+            return landau_func[index].push_back(&square);
         case 4:
-            landau_func[index].push_back(&quartic);
-            break;
+            return landau_func[index].push_back(&quartic);
         case 6:
-            landau_func[index].push_back(&sextic);
-            break;
+            return landau_func[index].push_back(&sextic);
         case 8:
-            landau_func[index].push_back(&octic);
-            break;
+            return landau_func[index].push_back(&octic);
         case 10:
-            landau_func[index].push_back(&decic);
-            break;
+            return landau_func[index].push_back(&decic);
         default:
             throw invalid_argument("Longitudinal function not found");
     }
@@ -249,10 +244,15 @@ void Atom::set_heisenberg_coeff(Atom &neigh_in, double JJ, int deg=1, int index=
         dphi = 0.1*2.0*M_PI;
         dtheta = 0.1;
     }
+    if (deg!=1 && dm==0)
+        dm = 0.1;
     switch(deg){
         case 1:
-            heisen_func[index].push_back(&j_lin_lin);
-            break;
+            return heisen_func[index].push_back(&j_lin_lin);
+        case 3:
+            return heisen_func[index].push_back(&j_cub_lin);
+        case 5:
+            return heisen_func[index].push_back(&j_qui_lin);
         default:
             throw invalid_argument("Pairwise interaction not found");
     }
@@ -572,7 +572,7 @@ void MC::run(double T_in, int number_of_iterations=1){
     }
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - begin);
-    steps_per_second = n_tot*number_of_iterations/double(duration.count())/1.0e6;
+    steps_per_second = n_tot*number_of_iterations/double(duration.count())*1.0e6;
 }
 
 double MC::get_steps_per_second(){

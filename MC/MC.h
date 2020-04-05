@@ -65,7 +65,7 @@ class MC{
     private:
         long long int acc, MC_count;
         int n_tot;
-        clock_t steps_per_second;
+        double steps_per_second;
         bool debug_mode;
         double kB, lambda, eta, E_min;
         Atom *atom;
