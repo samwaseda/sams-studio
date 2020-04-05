@@ -8,83 +8,38 @@
 using namespace std;
 
 double zufall();
+double power(double, int);
 
-struct Magnitude{
-    virtual double value(double);
-    virtual valarray<double> gradient(valarray<double>&);
-};
-
-struct Square : Magnitude {
-    double value(double);
-    valarray<double> gradient(valarray<double>&);
-} square;
-
-struct Quartic : Magnitude {
-    double value(double);
-    valarray<double> gradient(valarray<double>&);
-} quartic;
-
-struct Sextic : Magnitude {
-    double value(double);
-    valarray<double> gradient(valarray<double>&);
-} sextic;
-
-struct Octic : Magnitude {
-    double value(double);
-    valarray<double> gradient(valarray<double>&);
-} octic;
-
-struct Decic : Magnitude {
-    double value(double);
-    valarray<double> gradient(valarray<double>&);
-} decic;
-
-struct Bilinear{
-    virtual double value(valarray<double>&, valarray<double>&);
-    virtual double diff(valarray<double>&, valarray<double>&, valarray<double>&);
-    virtual valarray<double> gradient(valarray<double>&, valarray<double>&);
-};
-
-struct J_linear : Bilinear {
-    double value(valarray<double>&, valarray<double>&);
-    double diff(valarray<double>&, valarray<double>&, valarray<double>&);
-    valarray<double> gradient(valarray<double>&, valarray<double>&);
-} j_linear;
-
-struct J_square : Bilinear {
-    double value(valarray<double>&, valarray<double>&);
-    double diff(valarray<double>&, valarray<double>&, valarray<double>&);
-    valarray<double> gradient(valarray<double>&, valarray<double>&);
-} j_square;
-
-
-// double J_cross_prod(double*, double*, double*);
+struct Product;
+struct Magnitude;;
 
 class Atom{
     private:
         double mabs, mabs_old, theta, theta_old, phi, phi_old, E_current[2], dE_current[2], dm, dphi, dtheta, mmax;
-        valarray<double> m_old, gradient;
+        valarray<double> gradient;
         vector<double> heisen_coeff[2], landau_coeff[2];
         vector<Magnitude*> landau_func[2];
-        vector<Bilinear*> heisen_func[2];
-        vector<valarray<double> * > m_n[2];
+        vector<Product*> heisen_func[2];
+        vector<Atom*> neigh[2];
         int acc, count;
         bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m
         void update_flag(bool);
         void set_m(double, double, double, bool diff=false);
+        friend Product;
     public:
-        valarray<double> m;
+        valarray<double> m, m_old;
         valarray<double> get_gradient(double); // lambda
         Atom();
         ~Atom();
         double get_gradient_residual();
         double get_acceptance_ratio();
+        double get_magnitude(int exponent=1, bool old=false);
         double E(int, bool);    // index, force_compute
         double dE(int, bool);   // index, force_compute
         double run_gradient_descent(double, double); // h lambda diff
         void revoke();
         void set_landau_coeff(double, int, int);
-        void set_heisenberg_coeff(valarray<double>*, double, int, int);
+        void set_heisenberg_coeff(Atom&, double, int, int);
         void clear_landau_coeff(int);
         void clear_heisenberg_coeff(int);
         void activate_debug();
@@ -110,7 +65,7 @@ class MC{
     private:
         long long int acc, MC_count;
         int n_tot;
-        clock_t steps_per_second;
+        double steps_per_second;
         bool debug_mode;
         double kB, lambda, eta, E_min;
         Atom *atom;
@@ -147,5 +102,59 @@ class MC{
         double run_gradient_descent(int, double, double, double);
         void reset();
 };
+
+struct Magnitude{
+    virtual double value(double);
+    virtual valarray<double> gradient(valarray<double>&);
+};
+
+struct Square : Magnitude {
+    double value(double);
+    valarray<double> gradient(valarray<double>&);
+} square;
+
+struct Quartic : Magnitude {
+    double value(double);
+    valarray<double> gradient(valarray<double>&);
+} quartic;
+
+struct Sextic : Magnitude {
+    double value(double);
+    valarray<double> gradient(valarray<double>&);
+} sextic;
+
+struct Octic : Magnitude {
+    double value(double);
+    valarray<double> gradient(valarray<double>&);
+} octic;
+
+struct Decic : Magnitude {
+    double value(double);
+    valarray<double> gradient(valarray<double>&);
+} decic;
+
+struct Product{
+    virtual double value(Atom&, Atom&);
+    virtual double diff(Atom&, Atom&);
+    virtual valarray<double> gradient(Atom&, Atom&);
+};
+
+struct J_lin_lin : Product {
+    double value(Atom&, Atom&);
+    double diff(Atom&, Atom&);
+    valarray<double> gradient(Atom&, Atom&);
+} j_lin_lin;
+
+struct J_cub_lin : Product {
+    double value(Atom&, Atom&);
+    double diff(Atom&, Atom&);
+    valarray<double> gradient(Atom&, Atom&);
+} j_cub_lin;
+
+struct J_qui_lin : Product {
+    double value(Atom&, Atom&);
+    double diff(Atom&, Atom&);
+    valarray<double> gradient(Atom&, Atom&);
+} j_qui_lin;
 
 #endif
