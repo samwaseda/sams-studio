@@ -6,8 +6,23 @@ double zufall(){
     return 1.0-2.0*(rand()/(double)RAND_MAX);
 }
 
-double sq_mag(valarray<double> &m){
-    return (m*m).sum();
+double power(double x, int exponent){
+    switch(exponent){
+        case 1:
+            return x;
+        case 2:
+            return square.value(x);
+        case 4:
+            return quartic.value(x);
+        case 6:
+            return sextic.value(x);
+        case 8:
+            return octic.value(x);
+        case 10:
+            return decic.value(x);
+        default:
+            return exp(exponent*log(x));
+    }
 }
 
 double Magnitude::value(double xxx){return 0;}
@@ -41,52 +56,53 @@ valarray<double> Decic::gradient(valarray<double> &m){
     return 10*m.apply([](double x){return x*x*x*x*x*x*x*x;}).sum()*m;
 }
 
-double Product::value(valarray<double> &m_neigh, valarray<double> &m_me){
+double Product::value(Atom &neigh, Atom &me){
     return 0;
 }
 
-double Product::diff(valarray<double> &m_neigh, valarray<double> &m_new, valarray<double> &m_old){
+double Product::diff(Atom &neigh, Atom &me){
     return 0;
 }
 
-valarray<double> Product::gradient(valarray<double> &m_neigh, valarray<double> &m_me){
-    return 0*m_neigh;
+valarray<double> Product::gradient(Atom &neigh, Atom &me){
+    return 0*neigh.m;
 }
 
-double J_lin_lin::value(valarray<double> &m_neigh, valarray<double> &m_me){
-    return (m_neigh*m_me).sum();
+double J_lin_lin::value(Atom &neigh, Atom &me){
+    return (neigh.m*me.m).sum();
 }
 
-double J_lin_lin::diff(valarray<double> &m_neigh, valarray<double> &m_new, valarray<double> &m_old){
-    return (m_neigh*(m_new-m_old)).sum();
+double J_lin_lin::diff(Atom &neigh, Atom &me){
+    return (neigh.m*(me.m-me.m_old)).sum();
+
 }
 
-valarray<double> J_lin_lin::gradient(valarray<double> &m_neigh, valarray<double> &m_me){
-    return m_neigh;
+valarray<double> J_lin_lin::gradient(Atom &neigh, Atom &me){
+    return neigh.m;
 }
 
-double J_cub_lin::value(valarray<double> &m_neigh, valarray<double> &m_me){
-    return 0.5*(sq_mag(m_neigh)+sq_mag(m_me))*(m_neigh*m_me).sum();
+double J_cub_lin::value(Atom &neigh, Atom &me){
+    return 0.5*(neigh.get_magnitude(2)+me.get_magnitude(2))*(neigh.m*me.m).sum();
 }
 
-double J_cub_lin::diff(valarray<double> &m_neigh, valarray<double> &m_new, valarray<double> &m_old){
-    return 0.5*(sq_mag(m_new)*(m_new*m_neigh).sum()-sq_mag(m_old)*(m_old*m_neigh).sum()+sq_mag(m_neigh)*((m_new-m_old)*m_neigh).sum());
+double J_cub_lin::diff(Atom &neigh, Atom &me){
+    return 0.5*(me.get_magnitude(2)*(me.m*neigh.m).sum()-me.get_magnitude(2, true)*(me.m_old*neigh.m).sum()+neigh.get_magnitude(2)*((me.m-me.m_old)*neigh.m).sum());
 }
 
-valarray<double> J_cub_lin::gradient(valarray<double> &m_neigh, valarray<double> &m_me){
-    return m_me*((m_me*m_neigh).sum()+0.5*(sq_mag(m_me)+sq_mag(m_neigh)));
+valarray<double> J_cub_lin::gradient(Atom &neigh, Atom &me){
+    return (me.m*(me.m*neigh.m).sum()+0.5*neigh.m*(me.get_magnitude(2)+neigh.get_magnitude(2)));
 }
 
-double J_qui_lin::value(valarray<double> &m_neigh, valarray<double> &m_me){
-    return 0.5*(square.value(sq_mag(m_neigh))+square.value(sq_mag(m_me)))*(m_neigh*m_me).sum();
+double J_qui_lin::value(Atom &neigh, Atom &me){
+    return 0.5*(neigh.get_magnitude(4)+me.get_magnitude(4))*(neigh.m*me.m).sum();
 }
 
-double J_qui_lin::diff(valarray<double> &m_neigh, valarray<double> &m_new, valarray<double> &m_old){
-    return 0.5*(square.value(sq_mag(m_new))*(m_new*m_neigh).sum()-square.value(sq_mag(m_old))*(m_old*m_neigh).sum()+square.value(sq_mag(m_neigh))*((m_new-m_old)*m_neigh).sum());
+double J_qui_lin::diff(Atom &neigh, Atom &me){
+    return 0.5*(me.get_magnitude(4)*(me.m*neigh.m).sum()-me.get_magnitude(4, true)*(me.m_old*neigh.m).sum()+neigh.get_magnitude(4)*((me.m-me.m_old)*neigh.m).sum());
 }
 
-valarray<double> J_qui_lin::gradient(valarray<double> &m_neigh, valarray<double> &m_me){
-    return m_me*(2*(m_me*m_neigh).sum()+sq_mag(m_me)+sq_mag(m_neigh));
+valarray<double> J_qui_lin::gradient(Atom &neigh, Atom &me){
+    return (2*me.m*me.get_magnitude(2)*(me.m*neigh.m).sum()+0.5*neigh.m*(me.get_magnitude(4)+neigh.get_magnitude(4)));
 }
 
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
@@ -122,12 +138,20 @@ double Atom::get_acceptance_ratio(){
     return 0;
 }
 
+double Atom::get_magnitude(int exponent, bool old)
+{
+    if(old)
+        return power(mabs_old, exponent);
+    else
+        return power(mabs, exponent);
+}
+
 double Atom::E(int index=0, bool force_compute=false){
     if(E_uptodate[index] && !force_compute)
         return E_current[index];
     E_current[index] = 0;
-    for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        E_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->value(*m_n[index].at(i_atom), m);
+    for(int i_atom=0; i_atom<int(neigh[index].size()); i_atom++)
+        E_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->value(*neigh[index].at(i_atom), *this);
     E_current[index] *= 0.5;
     for(int i=0; i<int(landau_coeff[index].size()); i++)
         E_current[index] += landau_coeff[index].at(i)*landau_func[index].at(i)->value(mabs);
@@ -142,8 +166,8 @@ double Atom::dE(int index=0, bool force_compute=false){
     dE_current[index] = 0;
     count++;
     acc++;
-    for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-        dE_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->diff(*m_n[index].at(i_atom), m, m_old);
+    for(int i_atom=0; i_atom<int(neigh[index].size()); i_atom++)
+        dE_current[index] -= heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->diff(*neigh[index].at(i_atom), *this);
     for(int i=0; i<int(landau_coeff[index].size()); i++)
         dE_current[index] += landau_coeff[index].at(i)*(landau_func[index].at(i)->value(mabs)-landau_func[index].at(i)->value(mabs_old));
     if(!debug)
@@ -214,11 +238,11 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     }
 }
 
-void Atom::set_heisenberg_coeff(valarray<double>* mm, double JJ, int deg=1, int index=0){
+void Atom::set_heisenberg_coeff(Atom &neigh_in, double JJ, int deg=1, int index=0){
     if(JJ==0)
         return;
     update_flag(false);
-    m_n[index].push_back(mm);
+    neigh[index].push_back(&neigh_in);
     heisen_coeff[index].push_back(JJ);
     if(dphi==0 && dtheta==0)
     {
@@ -237,7 +261,7 @@ void Atom::set_heisenberg_coeff(valarray<double>* mm, double JJ, int deg=1, int 
 void Atom::clear_heisenberg_coeff(int index){
     heisen_coeff[index].clear();
     heisen_func[index].clear();
-    m_n[index].clear();
+    neigh[index].clear();
 }
 
 void Atom::clear_landau_coeff(int index){
@@ -272,8 +296,8 @@ valarray<double> Atom::get_gradient(double lambda){
     {
         if(lambda==1 && index==0)
             continue;
-        for(int i_atom=0; i_atom<int(m_n[index].size()); i_atom++)
-            grad -= (1-index-lambda*(1-2*index))*heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->gradient(*m_n[index].at(i_atom), m);
+        for(int i_atom=0; i_atom<int(neigh[index].size()); i_atom++)
+            grad -= (1-index-lambda*(1-2*index))*heisen_coeff[index].at(i_atom)*heisen_func[index].at(i_atom)->gradient(*neigh[index].at(i_atom), *this);
         for(int i=0; i<int(landau_coeff[index].size()); i++)
             grad += (1-index-lambda*(1-2*index))*landau_coeff[index].at(i)*(landau_func[index].at(i)->gradient(m));
         if(lambda==0)
@@ -381,7 +405,7 @@ void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> 
     if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
         throw invalid_argument("Number of coefficients is not the same as the indices");
     for(int i=0; i<int(coeff.size()); i++)
-        atom[me.at(i)].set_heisenberg_coeff(&atom[neigh.at(i)].m, coeff.at(i), deg, index);
+        atom[me.at(i)].set_heisenberg_coeff(atom[neigh.at(i)], coeff.at(i), deg, index);
 }
 
 void MC::create_atoms(int number_of_atoms)
