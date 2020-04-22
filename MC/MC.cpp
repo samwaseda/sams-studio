@@ -1,7 +1,5 @@
 #include "MC.h"
 
-using namespace std;
-
 double zufall(){
     return 1.0-2.0*(rand()/(double)RAND_MAX);
 }
@@ -105,6 +103,18 @@ valarray<double> J_qui_lin::gradient(Atom &neigh, Atom &me){
     return (2*me.m*me.get_magnitude(2)*(me.m*neigh.m).sum()+0.5*neigh.m*(me.get_magnitude(4)+neigh.get_magnitude(4)));
 }
 
+double J_cross::value(Atom &neigh, Atom &me){
+    return neigh.get_magnitude(2)-square.value((neigh.m*me.m).sum())/me.get_magnitude(2);
+}
+
+double J_cross::diff(Atom &neigh, Atom &me){
+    return square.value((neigh.m*me.m).sum())/me.get_magnitude(2)-square.value((neigh.m*me.m_old).sum())/me.get_magnitude(2, true);
+}
+
+valarray<double> J_cross::gradient(Atom &neigh, Atom &me){
+    return 2*(-me.m*(me.m*neigh.m).sum()/me.get_magnitude(2)+neigh.m*square.value((me.m*neigh.m).sum())/me.get_magnitude(4));
+}
+
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
 {
     m.resize(3);
@@ -120,7 +130,7 @@ Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
     update_flag(false);
 }
 
-void Atom::update_flag(bool ff=false){
+void Atom::update_flag(bool ff){
     for(int i=0; i<2; i++)
     {
         E_uptodate[i] = ff;
@@ -146,7 +156,7 @@ double Atom::get_magnitude(int exponent, bool old)
         return power(mabs, exponent);
 }
 
-double Atom::E(int index=0, bool force_compute=false){
+double Atom::E(int index, bool force_compute){
     if(E_uptodate[index] && !force_compute)
         return E_current[index];
     E_current[index] = 0;
@@ -160,7 +170,7 @@ double Atom::E(int index=0, bool force_compute=false){
     return E_current[index];
 }
 
-double Atom::dE(int index=0, bool force_compute=false){
+double Atom::dE(int index, bool force_compute){
     if(dE_uptodate[index] && !force_compute)
         return dE_current[index];
     dE_current[index] = 0;
@@ -233,7 +243,7 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     }
 }
 
-void Atom::set_heisenberg_coeff(Atom &neigh_in, double JJ, int deg=1, int index=0){
+void Atom::set_heisenberg_coeff(Atom &neigh_in, double JJ, int deg, int index){
     if(JJ==0)
         return;
     update_flag(false);
@@ -337,7 +347,7 @@ Atom::~Atom(){
 
 average_energy::average_energy(){ reset();}
 
-void average_energy::add(double E_in, bool total_energy=false, int index=0)
+void average_energy::add(double E_in, bool total_energy, int index)
 {
     if (E_in==0)
         return;
@@ -392,7 +402,7 @@ void MC::activate_debug()
     debug_mode = true;
 }
 
-void MC::set_landau_coeff(vector<double> coeff, int deg, int index=0)
+void MC::set_landau_coeff(vector<double> coeff, int deg, int index)
 {
     if(int(coeff.size())!=n_tot)
         throw invalid_argument("Number of coefficients is not the same as the number of atoms");
@@ -400,7 +410,7 @@ void MC::set_landau_coeff(vector<double> coeff, int deg, int index=0)
         atom[i].set_landau_coeff(coeff[i], deg, index);
 }
 
-void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0)
+void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index)
 {
     if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
         throw invalid_argument("Number of coefficients is not the same as the indices");
@@ -425,13 +435,13 @@ int MC::get_number_of_atoms(){
     return n_tot;
 }
 
-void MC::clear_landau_coeff(int index=0)
+void MC::clear_landau_coeff(int index)
 {
     for(int i=0; i<n_tot; i++)
         atom[i].clear_landau_coeff(index);
 }
 
-void MC::clear_heisenberg_coeff(int index=0)
+void MC::clear_heisenberg_coeff(int index)
 {
     for(int i=0; i<n_tot; i++)
         atom[i].clear_heisenberg_coeff(index);
@@ -478,7 +488,7 @@ double MC::get_energy(int index=0){
     return EE;
 }
 
-double MC::run_gradient_descent(int max_iter, double step_size=1, double decrement=0.001, double diff = 1.0e-8)
+double MC::run_gradient_descent(int max_iter, double step_size, double decrement, double diff)
 {
     reset();
     double residual = 0, residual_max = 0, dot_product = 0;
@@ -525,7 +535,7 @@ void MC::set_eta(double eta_in){
     eta = eta_in;
 }
 
-void MC::run(double T_in, int number_of_iterations=1){
+void MC::run(double T_in, int number_of_iterations){
     double kBT = kB*T_in, dEE_tot[2], EE_tot[2];
     auto begin = std::chrono::high_resolution_clock::now();
     int ID_rand;
@@ -612,11 +622,11 @@ void MC::set_magnetic_moments(vector<double> m_in)
     reset();
 }
 
-double MC::get_mean_energy(int index=0){
+double MC::get_mean_energy(int index){
     return E_tot.E_mean(index);
 }
 
-double MC::get_energy_variance(int index=0){
+double MC::get_energy_variance(int index){
     return E_tot.E_var(index);
 }
 
