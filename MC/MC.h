@@ -22,7 +22,7 @@ class Atom{
         vector<Product*> heisen_func[2];
         vector<Atom*> neigh[2];
         int acc, count;
-        bool E_uptodate[2], dE_uptodate[2], debug; // This does not work when neighbors change their m
+        bool E_uptodate[2], dE_uptodate[2], debug, flip; // This does not work when neighbors change their m
         void update_flag(bool ff=false);
         void set_m(double, double, double, bool diff=false);
         friend Product;
@@ -44,7 +44,7 @@ class Atom{
         void clear_heisenberg_coeff(int);
         void activate_debug();
         void propose_new_state();
-        void set_magnitude(double, double, double);
+        void set_magnitude(double, double, double, bool flip_in=true);
         void update_polar_coordinates();
 };
 
@@ -74,6 +74,7 @@ class MC{
         bool thermodynamic_integration();
         bool accept(int, double, double);
         bool bose_einstein();
+        vector<int> selectable_ID;
     public:
         MC();
         ~MC();
@@ -98,8 +99,9 @@ class MC{
         double get_ground_state_energy();
         double get_steps_per_second();
         int get_number_of_atoms();
-        void set_magnitude(vector<double>, vector<double>, vector<double>);
+        void set_magnitude(vector<double>, vector<double>, vector<double>, vector<int>);
         double run_gradient_descent(int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
+        void select_ID(vector<int>);
         void reset();
 };
 
@@ -157,10 +159,16 @@ struct J_qui_lin : Product {
     valarray<double> gradient(Atom&, Atom&);
 } j_qui_lin;
 
-struct J_cross : Product {
+struct J_cross_forward : Product {
     double value(Atom&, Atom&);
     double diff(Atom&, Atom&);
     valarray<double> gradient(Atom&, Atom&);
-} j_cross;
+} j_cross_forward;
+
+struct J_cross_backward : Product {
+    double value(Atom&, Atom&);
+    double diff(Atom&, Atom&);
+    valarray<double> gradient(Atom&, Atom&);
+} j_cross_backward;
 
 #endif

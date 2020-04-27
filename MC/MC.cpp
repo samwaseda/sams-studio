@@ -103,16 +103,28 @@ valarray<double> J_qui_lin::gradient(Atom &neigh, Atom &me){
     return (2*me.m*me.get_magnitude(2)*(me.m*neigh.m).sum()+0.5*neigh.m*(me.get_magnitude(4)+neigh.get_magnitude(4)));
 }
 
-double J_cross::value(Atom &neigh, Atom &me){
+double J_cross_forward::value(Atom &neigh, Atom &me){
     return neigh.get_magnitude(2)-square.value((neigh.m*me.m).sum())/me.get_magnitude(2);
 }
 
-double J_cross::diff(Atom &neigh, Atom &me){
+double J_cross_forward::diff(Atom &neigh, Atom &me){
     return square.value((neigh.m*me.m).sum())/me.get_magnitude(2)-square.value((neigh.m*me.m_old).sum())/me.get_magnitude(2, true);
 }
 
-valarray<double> J_cross::gradient(Atom &neigh, Atom &me){
+valarray<double> J_cross_forward::gradient(Atom &neigh, Atom &me){
     return 2*(-me.m*(me.m*neigh.m).sum()/me.get_magnitude(2)+neigh.m*square.value((me.m*neigh.m).sum())/me.get_magnitude(4));
+}
+
+double J_cross_backward::value(Atom &neigh, Atom &me){
+    return me.get_magnitude(2)-square.value((neigh.m*me.m).sum())/neigh.get_magnitude(2);
+}
+
+double J_cross_backward::diff(Atom &neigh, Atom &me){
+    return me.get_magnitude(2)-square.value((neigh.m*me.m).sum())/neigh.get_magnitude(2)-(me.get_magnitude(2, true)-square.value((neigh.m_old*me.m).sum())/neigh.get_magnitude(2));
+}
+
+valarray<double> J_cross_backward::gradient(Atom &neigh, Atom &me){
+    return 2*(me.m*me.get_magnitude()-neigh.m*(me.m*neigh.m).sum()/neigh.get_magnitude(2));
 }
 
 Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
@@ -263,6 +275,10 @@ void Atom::set_heisenberg_coeff(Atom &neigh_in, double JJ, int deg, int index){
             return heisen_func[index].push_back(&j_cub_lin);
         case 5:
             return heisen_func[index].push_back(&j_qui_lin);
+        case 11:
+            return heisen_func[index].push_back(&j_cross_forward);
+        case 13:
+            return heisen_func[index].push_back(&j_cross_backward);
         default:
             throw invalid_argument("Pairwise interaction not found");
     }
@@ -283,13 +299,15 @@ void Atom::propose_new_state(){
     double mabs_new = mabs+dm*zufall();
     double theta_new = cos(theta)+dtheta*zufall();
     double phi_new = phi+dphi*zufall();
+    if(flip)
+        mabs_new *= 1-2*(rand()%2);
     while(abs(theta_new)>1)
         theta_new = cos(theta)+dtheta*zufall();
     theta_new = acos(theta_new);
     set_m(mabs_new, theta_new, phi_new);
 }
 
-void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
+void Atom::set_magnitude(double ddm, double ddphi, double ddtheta, bool flip_in)
 {
     if(ddm<0 || ddphi<0 || ddtheta<0)
         throw invalid_argument( "Magnitude cannot be a negative value" );
@@ -298,6 +316,7 @@ void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
     dm = ddm;
     dphi = ddphi*2.0*M_PI;
     dtheta = ddtheta;
+    flip = flip_in;
 }
 
 valarray<double> Atom::get_gradient(double lambda){
@@ -427,6 +446,16 @@ void MC::create_atoms(int number_of_atoms)
         throw invalid_argument("You cannot change the number of atoms during the simulation");
     n_tot = number_of_atoms;
     atom = new Atom[n_tot];
+    selectable_ID.resize(n_tot);
+    for(int i_atom=0; i_atom<n_tot; i_atom++)
+        selectable_ID.at(i_atom) = i_atom;
+}
+
+void MC::select_ID(vector<int> select_ID_in)
+{
+    if(int(select_ID_in.size())>n_tot)
+        throw invalid_argument("select_ID longer than the number of atoms");
+    selectable_ID = select_ID_in;
 }
 
 int MC::get_number_of_atoms(){
@@ -557,7 +586,7 @@ void MC::run(double T_in, int number_of_iterations){
         for(int i=0; i<n_tot; i++)
         {
             MC_count++;
-            ID_rand = rand()%n_tot;
+            ID_rand = selectable_ID.at(rand()%selectable_ID.size());
             if(accept(ID_rand, kBT, EE_tot[0]+dEE_tot[0]))
             {
                 acc++;
@@ -643,12 +672,12 @@ vector<double> MC::get_acceptance_ratios(){
     return v;
 }
 
-void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dtheta)
+void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dtheta, vector<int> flip)
 {
     if(int(dm.size())!=int(dphi.size()) || int(dphi.size())!=int(dtheta.size()) || n_tot!=int(dm.size()))
         throw invalid_argument("Length of vectors not consistent");
     for(int i=0; i<n_tot; i++)
-        atom[i].set_magnitude(dm[i], dphi[i], dtheta[i]);
+        atom[i].set_magnitude(dm[i], dphi[i], dtheta[i], (flip[i]>0));
 }
 
 void MC::reset()
