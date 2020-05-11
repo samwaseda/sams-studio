@@ -25,6 +25,7 @@ cdef extern from "MC.h":
         double set_lambda(double) except +
         double get_eta() except +
         void set_eta(double) except +
+        void run_debug() except +
         double get_steps_per_second()
         double set_magnitude(vector[double], vector[double], vector[double], vector[int]) except +
         int get_number_of_atoms()

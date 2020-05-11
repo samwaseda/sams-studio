@@ -404,7 +404,7 @@ void average_energy::reset()
     }
 }
 
-MC::MC(): n_tot(0), debug_mode(false), kB(8.6173305e-5), lambda(-1), eta(1), E_min(0)
+MC::MC(): n_tot(0), debug_mode(false), kB(8.617333262145e-5), lambda(-1), eta(1), E_min(0)
 {
     reset();
 }
@@ -484,21 +484,21 @@ bool MC::thermodynamic_integration(){
 
 bool MC::accept(int ID_rand, double kBT, double E_current){
     atom[ID_rand].propose_new_state();
-    double dE = atom[ID_rand].dE();
+    double dEE = atom[ID_rand].dE();
     if(thermodynamic_integration())
-        dE = (1-lambda)*dE+lambda*atom[ID_rand].dE(1);
-    if(dE<=0)
+        dEE = (1-lambda)*dEE+atom[ID_rand].dE(1);
+    if(dEE<=0)
         return true;
     else if(kBT==0)
         return false;
     if(bose_einstein())
     {
-        if((exp((E_current-get_ground_state_energy())/kBT/n_tot)-1)/(exp(((E_current-get_ground_state_energy())/n_tot+dE)/kBT)-1)>rand()/(double)RAND_MAX)
+        if((exp((E_current-get_ground_state_energy())/kBT/n_tot)-1)/(exp(((E_current-get_ground_state_energy())/n_tot+dEE)/kBT)-1)>rand()/(double)RAND_MAX)
             return true;
         else
             return false;
     }
-    if(exp(-dE/(kBT*eta))>rand()/(double)RAND_MAX)
+    if(exp(-dEE/(kBT*eta))>(double)(rand())/(double)RAND_MAX)
         return true;
     return false;
 }
@@ -562,6 +562,28 @@ void MC::set_eta(double eta_in){
     if(eta_in<0)
         throw invalid_argument("Invalid eta value");
     eta = eta_in;
+}
+
+void MC::run_debug(){
+    vector<double> m_tmp(3);
+    double E = get_energy();
+    for(int i=0; i<n_tot; i++)
+    {
+        for(int j=0; j<3; j++)
+            m_tmp.at(j) = atom[i].m[j];
+        if(abs(atom[i].E(0, true)-atom[i].E())>1.0e-8)
+            throw invalid_argument("force compute not working: "+to_string(atom[i].E(0, true))+" "+to_string(atom[i].E()));
+        double E_before = get_energy();
+        accept(i, 0, 0);
+        if(abs(get_energy()-E_before-atom[i].dE())>1.0e-8)
+            throw invalid_argument("energy difference wrong: "+to_string(atom[i].E()-E_before)+" "+to_string(atom[i].dE()));
+        atom[i].revoke();
+        for(int j=0; j<3; j++)
+            if(abs(atom[i].m[j]-m_tmp.at(j))>1.0e-8)
+                throw invalid_argument("revoke not worked properly for magnetic moments");
+    }
+    if(abs(E-get_energy())>1.0e-8)
+        throw invalid_argument("revoke not worked properly for total energy");
 }
 
 void MC::run(double T_in, int number_of_iterations){

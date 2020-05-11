@@ -99,6 +99,7 @@ class MC{
         double get_ground_state_energy();
         double get_steps_per_second();
         int get_number_of_atoms();
+        void run_debug();
         void set_magnitude(vector<double>, vector<double>, vector<double>, vector<int>);
         double run_gradient_descent(int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
         void select_ID(vector<int>);

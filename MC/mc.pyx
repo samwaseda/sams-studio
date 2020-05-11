@@ -323,6 +323,12 @@ cdef class MC:
             max_iter = self.c_mc.get_number_of_atoms()**2;
         return self.c_mc.run_gradient_descent(max_iter, step_size, decrement, diff)
 
+    def run_debug(self):
+        """
+            run a few test calculations
+        """
+        self.c_mc.run_debug()
+
     def activate_debug(self):
         """
             Activate debug mode (not so helpful though...)
