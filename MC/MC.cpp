@@ -1,7 +1,7 @@
 #include "MC.h"
 
 double zufall(){
-    return 1.0-2.0*(rand()/(double)RAND_MAX);
+    return 1.0-2.0*((double)rand()/(double)RAND_MAX);
 }
 
 double power(double x, int exponent){
@@ -127,7 +127,7 @@ valarray<double> J_cross_backward::gradient(Atom &neigh, Atom &me){
     return 2*(me.m*me.get_magnitude()-neigh.m*(me.m*neigh.m).sum()/neigh.get_magnitude(2));
 }
 
-Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
+Atom::Atom() : mmax(100), acc(0), count(0), debug(false)
 {
     m.resize(3);
     m_old.resize(3);
@@ -220,6 +220,17 @@ void Atom::set_m(double mabs_new, double theta_new, double phi_new, bool diff){
     m[2] = mabs*cos(theta);
 }
 
+void Atom::check_consistency() {
+    if ( abs(m[0]-mabs*cos(phi)*sin(theta))>1.0e-8 )
+        throw invalid_argument("mx: "+to_string(m[0])+" vs. "+to_string(mabs*cos(phi)*sin(theta)));
+    if ( abs(m[1]-mabs*sin(phi)*sin(theta))>1.0e-8 )
+        throw invalid_argument("mx: "+to_string(m[0])+" vs. "+to_string(mabs*sin(phi)*sin(theta)));
+    if ( abs(m[2]-mabs*cos(theta))>1.0e-8 )
+        throw invalid_argument("mx: "+to_string(m[0])+" vs. "+to_string(mabs*cos(theta)));
+    if ( abs(sqrt((m*m).sum())-abs(mabs))>1.0e-8 )
+        throw invalid_argument("mabs: "+to_string(sqrt((m*m).sum()))+" vs. "+to_string(abs(mabs)));
+}
+
 void Atom::update_polar_coordinates(){
     update_flag(false);
     mabs = sqrt((m*m).sum());
@@ -296,13 +307,16 @@ void Atom::clear_landau_coeff(int index){
 }
 
 void Atom::propose_new_state(){
-    double mabs_new = mabs+dm*zufall();
-    double theta_new = cos(theta)+dtheta*zufall();
+    double mabs_new = cbrt(abs(dm*zufall()*(3.0*mabs*mabs+dm*dm)+mabs*(mabs*mabs+3.0*dm*dm)));
+    double theta_new = zufall()*sin(theta)*sin(dtheta)+cos(theta)*cos(dtheta);
     double phi_new = phi+dphi*zufall();
-    if(flip)
-        mabs_new *= 1-2*(rand()%2);
     while(abs(theta_new)>1)
-        theta_new = cos(theta)+dtheta*zufall();
+        theta_new = zufall()*sin(theta)*sin(dtheta)+cos(theta)*cos(dtheta);
+    if(flip && rand()%2==1)
+    {
+        theta_new *= -1;
+        phi_new *= -1;
+    }
     theta_new = acos(theta_new);
     set_m(mabs_new, theta_new, phi_new);
 }
@@ -486,7 +500,7 @@ bool MC::accept(int ID_rand, double kBT, double E_current){
     atom[ID_rand].propose_new_state();
     double dEE = atom[ID_rand].dE();
     if(thermodynamic_integration())
-        dEE = (1-lambda)*dEE+atom[ID_rand].dE(1);
+        dEE = (1-lambda)*dEE+lambda*atom[ID_rand].dE(1);
     if(dEE<=0)
         return true;
     else if(kBT==0)
@@ -584,6 +598,8 @@ void MC::run_debug(){
     }
     if(abs(E-get_energy())>1.0e-8)
         throw invalid_argument("revoke not worked properly for total energy");
+    for(int i=0; i<n_tot; i++)
+        atom[i].check_consistency();
 }
 
 void MC::run(double T_in, int number_of_iterations){
@@ -626,6 +642,8 @@ void MC::run(double T_in, int number_of_iterations){
                 throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[i])+" "+to_string(dEE_tot[i]) );
             if(!thermodynamic_integration())
                 break;
+            for(int i=0; i<n_tot; i++)
+                atom[i].check_consistency();
         }
         E_tot.add(dEE_tot[0]);
         if(thermodynamic_integration())

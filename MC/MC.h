@@ -46,6 +46,7 @@ class Atom{
         void propose_new_state();
         void set_magnitude(double, double, double, bool flip_in=true);
         void update_polar_coordinates();
+        void check_consistency();
 };
 
 class average_energy
