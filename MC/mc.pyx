@@ -266,6 +266,13 @@ cdef class MC:
             raise ValueError("Lambda value has to be between 0 and 1")
         self.c_mc.set_lambda(val)
 
+    def select_id(self, indices):
+        """
+            Args:
+                indices (list): list of ID's that can be chosen
+        """
+        self.c_mc.select_ID(np.array(indices).tolist())
+
     def get_steps_per_second(self):
         """
             Returns:
@@ -273,7 +280,7 @@ cdef class MC:
         """
         return self.c_mc.get_steps_per_second()
 
-    def set_magnitude(self, dm, dphi, dtheta):
+    def set_magnitude(self, dm, dphi, flip=1):
         """
             Args:
                 dm (float/list/ndarray): Magnitude variation strength. If a single value is set, the same
@@ -293,14 +300,14 @@ cdef class MC:
         """
         dm = np.array([dm]).flatten()
         dphi = np.array([dphi]).flatten()
-        dtheta = np.array([dtheta]).flatten()
+        flip = np.array([flip]).flatten()
         if len(dm)==1:
             dm = np.array(self.c_mc.get_number_of_atoms()*dm.tolist())
         if len(dphi)==1:
             dphi = np.array(self.c_mc.get_number_of_atoms()*dphi.tolist())
-        if len(dtheta)==1:
-            dtheta = np.array(self.c_mc.get_number_of_atoms()*dtheta.tolist())
-        self.c_mc.set_magnitude(dm, dphi, dtheta)
+        if len(flip)==1:
+            flip = np.array(self.c_mc.get_number_of_atoms()*flip.tolist())
+        self.c_mc.set_magnitude(dm, dphi, flip)
 
     def run_gradient_descent(self, max_iter=None, step_size=1, decrement=0.001, diff=1.0e-8):
         """
@@ -312,6 +319,12 @@ cdef class MC:
         if max_iter is None:
             max_iter = self.c_mc.get_number_of_atoms()**2;
         return self.c_mc.run_gradient_descent(max_iter, step_size, decrement, diff)
+
+    def run_debug(self):
+        """
+            run a few test calculations
+        """
+        self.c_mc.run_debug()
 
     def activate_debug(self):
         """

@@ -1,9 +1,7 @@
 #include "MC.h"
 
-using namespace std;
-
 double zufall(){
-    return 1.0-2.0*(rand()/(double)RAND_MAX);
+    return 1.0-2.0*((double)rand()/(double)RAND_MAX);
 }
 
 double power(double x, int exponent){
@@ -105,22 +103,42 @@ valarray<double> J_qui_lin::gradient(Atom &neigh, Atom &me){
     return (2*me.m*me.get_magnitude(2)*(me.m*neigh.m).sum()+0.5*neigh.m*(me.get_magnitude(4)+neigh.get_magnitude(4)));
 }
 
-Atom::Atom() : mmax(10), acc(0), count(0), debug(false)
+double J_cross_forward::value(Atom &neigh, Atom &me){
+    return neigh.get_magnitude(2)-square.value((neigh.m*me.m).sum())/me.get_magnitude(2);
+}
+
+double J_cross_forward::diff(Atom &neigh, Atom &me){
+    return square.value((neigh.m*me.m).sum())/me.get_magnitude(2)-square.value((neigh.m*me.m_old).sum())/me.get_magnitude(2, true);
+}
+
+valarray<double> J_cross_forward::gradient(Atom &neigh, Atom &me){
+    return 2*(-me.m*(me.m*neigh.m).sum()/me.get_magnitude(2)+neigh.m*square.value((me.m*neigh.m).sum())/me.get_magnitude(4));
+}
+
+double J_cross_backward::value(Atom &neigh, Atom &me){
+    return me.get_magnitude(2)-square.value((neigh.m*me.m).sum())/neigh.get_magnitude(2);
+}
+
+double J_cross_backward::diff(Atom &neigh, Atom &me){
+    return me.get_magnitude(2)-square.value((neigh.m*me.m).sum())/neigh.get_magnitude(2)-(me.get_magnitude(2, true)-square.value((neigh.m_old*me.m).sum())/neigh.get_magnitude(2));
+}
+
+valarray<double> J_cross_backward::gradient(Atom &neigh, Atom &me){
+    return 2*(me.m*me.get_magnitude()-neigh.m*(me.m*neigh.m).sum()/neigh.get_magnitude(2));
+}
+
+Atom::Atom() : mmax(100), acc(0), count(0), debug(false)
 {
     m.resize(3);
     m_old.resize(3);
     gradient.resize(3);
     mabs = 1;
-    phi = 0;
-    theta = 0;
-    set_magnitude(0, 0, 0);
-    m[0] = mabs*cos(phi)*sin(theta);
-    m[1] = mabs*sin(phi)*sin(theta);
-    m[2] = mabs*cos(theta);
+    m[0] = mabs;
+    set_magnitude(0, 0);
     update_flag(false);
 }
 
-void Atom::update_flag(bool ff=false){
+void Atom::update_flag(bool ff){
     for(int i=0; i<2; i++)
     {
         E_uptodate[i] = ff;
@@ -146,7 +164,7 @@ double Atom::get_magnitude(int exponent, bool old)
         return power(mabs, exponent);
 }
 
-double Atom::E(int index=0, bool force_compute=false){
+double Atom::E(int index, bool force_compute){
     if(E_uptodate[index] && !force_compute)
         return E_current[index];
     E_current[index] = 0;
@@ -160,7 +178,7 @@ double Atom::E(int index=0, bool force_compute=false){
     return E_current[index];
 }
 
-double Atom::dE(int index=0, bool force_compute=false){
+double Atom::dE(int index, bool force_compute){
     if(dE_uptodate[index] && !force_compute)
         return dE_current[index];
     dE_current[index] = 0;
@@ -175,39 +193,33 @@ double Atom::dE(int index=0, bool force_compute=false){
     return dE_current[index];
 }
 
-void Atom::set_m(double mabs_new, double theta_new, double phi_new, bool diff){
+void Atom::set_m(valarray<double>& m_new, bool diff){
     update_flag(false);
     mabs_old = mabs;
-    theta_old = theta;
-    phi_old = phi;
     m_old = m;
     if(diff){
-        mabs += mabs_new;
-        theta += theta_new;
-        phi += phi_new;
+        m = m_old+dphi*m_new;
+        m = mabs/sqrt((m*m).sum())*m;
+        m *= sqrt(((m_old+dm*m_new)*(m_old+dm*m_new)).sum())/mabs;
     }
     else{
-        mabs = mabs_new;
-        theta = theta_new;
-        phi = phi_new;
+        m = m_new;
     }
+    mabs = sqrt((m*m).sum());
     if(abs(mabs)>mmax)
         throw invalid_argument("Magnetic moment exploding");
-    m[0] = mabs*cos(phi)*sin(theta);
-    m[1] = mabs*sin(phi)*sin(theta);
-    m[2] = mabs*cos(theta);
 }
 
-void Atom::update_polar_coordinates(){
-    update_flag(false);
-    mabs = sqrt((m*m).sum());
-    theta = atan2(sqrt(m[0]*m[0]+m[1]*m[1]), m[2]);
-    phi = atan2(m[1], m[2]);
+void Atom::check_consistency() {
+    if ( abs(sqrt((m*m).sum())-abs(mabs))>1.0e-8 )
+        throw invalid_argument("mabs: "+to_string(sqrt((m*m).sum()))+" vs. "+to_string(abs(mabs)));
 }
 
 void Atom::revoke(){
     acc--;
-    set_m(mabs_old, theta_old, phi_old);
+    update_flag(false);
+    m = m_old;
+    mabs = mabs_old;
 }
 
 void Atom::set_landau_coeff(double value, int deg, int index=0){
@@ -233,17 +245,14 @@ void Atom::set_landau_coeff(double value, int deg, int index=0){
     }
 }
 
-void Atom::set_heisenberg_coeff(Atom &neigh_in, double JJ, int deg=1, int index=0){
+void Atom::set_heisenberg_coeff(Atom &neigh_in, double JJ, int deg, int index){
     if(JJ==0)
         return;
     update_flag(false);
     neigh[index].push_back(&neigh_in);
     heisen_coeff[index].push_back(JJ);
-    if(dphi==0 && dtheta==0)
-    {
-        dphi = 0.1*2.0*M_PI;
-        dtheta = 0.1;
-    }
+    if(dphi==0)
+        dphi = 0.1;
     if (deg!=1 && dm==0)
         dm = 0.1;
     switch(deg){
@@ -253,6 +262,10 @@ void Atom::set_heisenberg_coeff(Atom &neigh_in, double JJ, int deg=1, int index=
             return heisen_func[index].push_back(&j_cub_lin);
         case 5:
             return heisen_func[index].push_back(&j_qui_lin);
+        case 11:
+            return heisen_func[index].push_back(&j_cross_forward);
+        case 13:
+            return heisen_func[index].push_back(&j_cross_backward);
         default:
             throw invalid_argument("Pairwise interaction not found");
     }
@@ -270,24 +283,23 @@ void Atom::clear_landau_coeff(int index){
 }
 
 void Atom::propose_new_state(){
-    double mabs_new = mabs+dm*zufall();
-    double theta_new = cos(theta)+dtheta*zufall();
-    double phi_new = phi+dphi*zufall();
-    while(abs(theta_new)>1)
-        theta_new = cos(theta)+dtheta*zufall();
-    theta_new = acos(theta_new);
-    set_m(mabs_new, theta_new, phi_new);
+    valarray<double> m_new(3);
+    for(int i=0; i<3; i++)
+        m_new[i] = zufall();
+    set_m(m_new, true);
+    if(flip && rand()%2==1)
+        m *= -1;
 }
 
-void Atom::set_magnitude(double ddm, double ddphi, double ddtheta)
+void Atom::set_magnitude(double ddm, double ddphi, bool flip_in)
 {
-    if(ddm<0 || ddphi<0 || ddtheta<0)
+    if(ddm<0 || ddphi<0)
         throw invalid_argument( "Magnitude cannot be a negative value" );
     if(int(landau_coeff[0].size())+int(landau_coeff[1].size())==0 && ddm!=0)
         throw invalid_argument("You cannot change moment magnitude without defining Landau coefficients");
     dm = ddm;
-    dphi = ddphi*2.0*M_PI;
-    dtheta = ddtheta;
+    dphi = ddphi;
+    flip = flip_in;
 }
 
 valarray<double> Atom::get_gradient(double lambda){
@@ -312,15 +324,8 @@ double Atom::get_gradient_residual(){
 
 double Atom::run_gradient_descent(double h, double lambda){
     valarray<double> grad(3);
-    grad = get_gradient(lambda);
-    valarray<double> mr = m/mabs;
-    valarray<double> mphi = {-m[1], m[0], 0};
-    valarray<double> mtheta = {m[0]*m[2], m[1]*m[2], -(m[0]*m[0]+m[1]*m[1])};
-    if((mphi*mphi).sum()>1.0e-8)
-        mphi = mphi/sqrt((mphi*mphi).sum());
-    if((mtheta*mtheta).sum()>1.0e-8)
-        mtheta = mtheta/sqrt((mtheta*mtheta).sum());
-    set_m(-h*dm*(grad*mr).sum(), -h*dtheta*(grad*mtheta).sum(), -h*dphi*(grad*mphi).sum(), true);
+    grad = -get_gradient(lambda);
+    set_m(grad, true);
     grad = m-m_old;
     double return_value = (gradient*grad).sum();
     gradient = grad;
@@ -337,7 +342,7 @@ Atom::~Atom(){
 
 average_energy::average_energy(){ reset();}
 
-void average_energy::add(double E_in, bool total_energy=false, int index=0)
+void average_energy::add(double E_in, bool total_energy, int index)
 {
     if (E_in==0)
         return;
@@ -375,7 +380,7 @@ void average_energy::reset()
     }
 }
 
-MC::MC(): n_tot(0), debug_mode(false), kB(8.6173305e-5), lambda(-1), eta(1), E_min(0)
+MC::MC(): n_tot(0), debug_mode(false), kB(8.617333262145e-5), lambda(-1), eta(1), E_min(0)
 {
     reset();
 }
@@ -392,7 +397,7 @@ void MC::activate_debug()
     debug_mode = true;
 }
 
-void MC::set_landau_coeff(vector<double> coeff, int deg, int index=0)
+void MC::set_landau_coeff(vector<double> coeff, int deg, int index)
 {
     if(int(coeff.size())!=n_tot)
         throw invalid_argument("Number of coefficients is not the same as the number of atoms");
@@ -400,7 +405,7 @@ void MC::set_landau_coeff(vector<double> coeff, int deg, int index=0)
         atom[i].set_landau_coeff(coeff[i], deg, index);
 }
 
-void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index=0)
+void MC::set_heisenberg_coeff(vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index)
 {
     if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
         throw invalid_argument("Number of coefficients is not the same as the indices");
@@ -417,6 +422,16 @@ void MC::create_atoms(int number_of_atoms)
         throw invalid_argument("You cannot change the number of atoms during the simulation");
     n_tot = number_of_atoms;
     atom = new Atom[n_tot];
+    selectable_ID.resize(n_tot);
+    for(int i_atom=0; i_atom<n_tot; i_atom++)
+        selectable_ID.at(i_atom) = i_atom;
+}
+
+void MC::select_ID(vector<int> select_ID_in)
+{
+    if(int(select_ID_in.size())>n_tot)
+        throw invalid_argument("select_ID longer than the number of atoms");
+    selectable_ID = select_ID_in;
 }
 
 int MC::get_number_of_atoms(){
@@ -425,13 +440,13 @@ int MC::get_number_of_atoms(){
     return n_tot;
 }
 
-void MC::clear_landau_coeff(int index=0)
+void MC::clear_landau_coeff(int index)
 {
     for(int i=0; i<n_tot; i++)
         atom[i].clear_landau_coeff(index);
 }
 
-void MC::clear_heisenberg_coeff(int index=0)
+void MC::clear_heisenberg_coeff(int index)
 {
     for(int i=0; i<n_tot; i++)
         atom[i].clear_heisenberg_coeff(index);
@@ -445,21 +460,21 @@ bool MC::thermodynamic_integration(){
 
 bool MC::accept(int ID_rand, double kBT, double E_current){
     atom[ID_rand].propose_new_state();
-    double dE = atom[ID_rand].dE();
+    double dEE = atom[ID_rand].dE();
     if(thermodynamic_integration())
-        dE = (1-lambda)*dE+lambda*atom[ID_rand].dE(1);
-    if(dE<=0)
+        dEE = (1-lambda)*dEE+lambda*atom[ID_rand].dE(1);
+    if(dEE<=0)
         return true;
     else if(kBT==0)
         return false;
     if(bose_einstein())
     {
-        if((exp((E_current-get_ground_state_energy())/kBT/n_tot)-1)/(exp(((E_current-get_ground_state_energy())/n_tot+dE)/kBT)-1)>rand()/(double)RAND_MAX)
+        if((exp((E_current-get_ground_state_energy())/kBT/n_tot)-1)/(exp(((E_current-get_ground_state_energy())/n_tot+dEE)/kBT)-1)>rand()/(double)RAND_MAX)
             return true;
         else
             return false;
     }
-    if(exp(-dE/(kBT*eta))>rand()/(double)RAND_MAX)
+    if(exp(-dEE/(kBT*eta))>(double)(rand())/(double)RAND_MAX)
         return true;
     return false;
 }
@@ -478,7 +493,7 @@ double MC::get_energy(int index=0){
     return EE;
 }
 
-double MC::run_gradient_descent(int max_iter, double step_size=1, double decrement=0.001, double diff = 1.0e-8)
+double MC::run_gradient_descent(int max_iter, double step_size, double decrement, double diff)
 {
     reset();
     double residual = 0, residual_max = 0, dot_product = 0;
@@ -525,7 +540,31 @@ void MC::set_eta(double eta_in){
     eta = eta_in;
 }
 
-void MC::run(double T_in, int number_of_iterations=1){
+void MC::run_debug(){
+    vector<double> m_tmp(3);
+    double E = get_energy();
+    for(int i=0; i<n_tot; i++)
+    {
+        for(int j=0; j<3; j++)
+            m_tmp.at(j) = atom[i].m[j];
+        if(abs(atom[i].E(0, true)-atom[i].E())>1.0e-8)
+            throw invalid_argument("force compute not working: "+to_string(atom[i].E(0, true))+" "+to_string(atom[i].E()));
+        double E_before = get_energy();
+        accept(i, 0, 0);
+        if(abs(get_energy()-E_before-atom[i].dE())>1.0e-8)
+            throw invalid_argument("energy difference wrong: "+to_string(atom[i].E()-E_before)+" "+to_string(atom[i].dE()));
+        atom[i].revoke();
+        for(int j=0; j<3; j++)
+            if(abs(atom[i].m[j]-m_tmp.at(j))>1.0e-8)
+                throw invalid_argument("revoke not worked properly for magnetic moments");
+    }
+    if(abs(E-get_energy())>1.0e-8)
+        throw invalid_argument("revoke not worked properly for total energy");
+    for(int i=0; i<n_tot; i++)
+        atom[i].check_consistency();
+}
+
+void MC::run(double T_in, int number_of_iterations){
     double kBT = kB*T_in, dEE_tot[2], EE_tot[2];
     auto begin = std::chrono::high_resolution_clock::now();
     int ID_rand;
@@ -547,7 +586,7 @@ void MC::run(double T_in, int number_of_iterations=1){
         for(int i=0; i<n_tot; i++)
         {
             MC_count++;
-            ID_rand = rand()%n_tot;
+            ID_rand = selectable_ID.at(rand()%selectable_ID.size());
             if(accept(ID_rand, kBT, EE_tot[0]+dEE_tot[0]))
             {
                 acc++;
@@ -565,6 +604,8 @@ void MC::run(double T_in, int number_of_iterations=1){
                 throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[i])+" "+to_string(dEE_tot[i]) );
             if(!thermodynamic_integration())
                 break;
+            for(int i=0; i<n_tot; i++)
+                atom[i].check_consistency();
         }
         E_tot.add(dEE_tot[0]);
         if(thermodynamic_integration())
@@ -605,18 +646,17 @@ void MC::set_magnetic_moments(vector<double> m_in)
         throw invalid_argument("Length of magnetic moments not correct");
     for(int i_atom=0; i_atom<n_tot; i_atom++)
     {
-        for(int ix=0; ix<3; ix++)
-             atom[i_atom].m[ix] = m_in.at(i_atom*3+ix);
-        atom[i_atom].update_polar_coordinates();
+        valarray<double> mm(&(m_in.at(i_atom*3)), 3);
+        atom[i_atom].set_m(mm);
     }
     reset();
 }
 
-double MC::get_mean_energy(int index=0){
+double MC::get_mean_energy(int index){
     return E_tot.E_mean(index);
 }
 
-double MC::get_energy_variance(int index=0){
+double MC::get_energy_variance(int index){
     return E_tot.E_var(index);
 }
 
@@ -633,12 +673,12 @@ vector<double> MC::get_acceptance_ratios(){
     return v;
 }
 
-void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<double> dtheta)
+void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<int> flip)
 {
-    if(int(dm.size())!=int(dphi.size()) || int(dphi.size())!=int(dtheta.size()) || n_tot!=int(dm.size()))
+    if(int(dm.size())!=int(dphi.size()) || n_tot!=int(dm.size()))
         throw invalid_argument("Length of vectors not consistent");
     for(int i=0; i<n_tot; i++)
-        atom[i].set_magnitude(dm[i], dphi[i], dtheta[i]);
+        atom[i].set_magnitude(dm[i], dphi[i], (flip[i]>0));
 }
 
 void MC::reset()
