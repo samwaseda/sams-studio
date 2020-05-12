@@ -15,7 +15,7 @@ struct Magnitude;;
 
 class Atom{
     private:
-        double mabs, mabs_old, theta, theta_old, phi, phi_old, E_current[2], dE_current[2], dm, dphi, dtheta, mmax;
+        double mabs, mabs_old, E_current[2], dE_current[2], dm, dphi, mmax;
         valarray<double> gradient;
         vector<double> heisen_coeff[2], landau_coeff[2];
         vector<Magnitude*> landau_func[2];
@@ -24,13 +24,13 @@ class Atom{
         int acc, count;
         bool E_uptodate[2], dE_uptodate[2], debug, flip; // This does not work when neighbors change their m
         void update_flag(bool ff=false);
-        void set_m(double, double, double, bool diff=false);
         friend Product;
     public:
         valarray<double> m, m_old;
         valarray<double> get_gradient(double); // lambda
         Atom();
         ~Atom();
+        void set_m(valarray<double>&, bool diff=false);
         double get_gradient_residual();
         double get_acceptance_ratio();
         double get_magnitude(int exponent=1, bool old=false);
@@ -44,8 +44,7 @@ class Atom{
         void clear_heisenberg_coeff(int);
         void activate_debug();
         void propose_new_state();
-        void set_magnitude(double, double, double, bool flip_in=true);
-        void update_polar_coordinates();
+        void set_magnitude(double, double, bool flip_in=true);
         void check_consistency();
 };
 
@@ -101,7 +100,7 @@ class MC{
         double get_steps_per_second();
         int get_number_of_atoms();
         void run_debug();
-        void set_magnitude(vector<double>, vector<double>, vector<double>, vector<int>);
+        void set_magnitude(vector<double>, vector<double>, vector<int>);
         double run_gradient_descent(int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
         void select_ID(vector<int>);
         void reset();

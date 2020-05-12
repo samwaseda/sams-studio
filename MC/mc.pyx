@@ -280,7 +280,7 @@ cdef class MC:
         """
         return self.c_mc.get_steps_per_second()
 
-    def set_magnitude(self, dm, dphi, dtheta, flip=1):
+    def set_magnitude(self, dm, dphi, flip=1):
         """
             Args:
                 dm (float/list/ndarray): Magnitude variation strength. If a single value is set, the same
@@ -300,17 +300,14 @@ cdef class MC:
         """
         dm = np.array([dm]).flatten()
         dphi = np.array([dphi]).flatten()
-        dtheta = np.array([dtheta]).flatten()
         flip = np.array([flip]).flatten()
         if len(dm)==1:
             dm = np.array(self.c_mc.get_number_of_atoms()*dm.tolist())
         if len(dphi)==1:
             dphi = np.array(self.c_mc.get_number_of_atoms()*dphi.tolist())
-        if len(dtheta)==1:
-            dtheta = np.array(self.c_mc.get_number_of_atoms()*dtheta.tolist())
         if len(flip)==1:
             flip = np.array(self.c_mc.get_number_of_atoms()*flip.tolist())
-        self.c_mc.set_magnitude(dm, dphi, dtheta, flip)
+        self.c_mc.set_magnitude(dm, dphi, flip)
 
     def run_gradient_descent(self, max_iter=None, step_size=1, decrement=0.001, diff=1.0e-8):
         """
