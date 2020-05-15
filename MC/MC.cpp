@@ -198,15 +198,14 @@ void Atom::set_m(valarray<double>& m_new, bool diff){
     mabs_old = mabs;
     m_old = m;
     if(diff){
-        m = m_old+dphi*m_new;
-        m = mabs/sqrt((m*m).sum())*m;
-        m *= sqrt(((m_old+dm*m_new)*(m_old+dm*m_new)).sum())/mabs;
+        m += dphi*m_new;
+        m *= sqrt(((m_old+dm*m_new)*(m_old+dm*m_new)).sum()/(m*m).sum());
     }
     else{
         m = m_new;
     }
     mabs = sqrt((m*m).sum());
-    if(abs(mabs)>mmax)
+    if(mabs>mmax)
         throw invalid_argument("Magnetic moment exploding");
 }
 
@@ -286,6 +285,7 @@ void Atom::propose_new_state(){
     valarray<double> m_new(3);
     for(int i=0; i<3; i++)
         m_new[i] = zufall();
+    m_new *= zufall()/sqrt((m_new*m_new).sum());
     set_m(m_new, true);
     if(flip && rand()%2==1)
         m *= -1;
