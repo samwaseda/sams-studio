@@ -292,8 +292,6 @@ cdef class MC:
                 MC algorithm proposes a new magnetic moment by
 
                 m_new = m_old+dm*random_number # it is ensured afterwards that m_new won't be negative
-                theta_new = acos(cos(theta_old)+dtheta*random_number); # it is ensured internally that the
-                                                                         term inside acos is between -1 and 1
                 phi_new = phi_old+dphi*2*PI*random_number;
 
                 where random_number is a random number between -1 and 1.
