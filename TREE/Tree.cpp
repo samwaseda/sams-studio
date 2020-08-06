@@ -2,8 +2,7 @@
 #include<cmath>
 #include<cstdio>
 #include<string>
-#include "tree.h"
-#include<assert.h>
+#include "Tree.h"
 // #define NDEBUG
 
 using namespace std;
@@ -37,7 +36,8 @@ void Node :: remove()
         delete this;
     else
     {
-        assert(("Leaves are not NULL", (major==NULL && minor==NULL)));
+        if (major!=NULL || minor!=NULL)
+            throw invalid_argument("Leaves are not NULL");
         kappa_tot = 0;
     }
 }
@@ -55,28 +55,34 @@ void Node :: set_kappa(double *kappa_in, int index_in, bool propagate_kappa)
 
 double Node :: kappa_sum(int n_max)
 {
-    assert(isleaf());
+    if(!isleaf())
+        throw invalid_argument("Not leaf");
     double sum=0;
     for(int i=0; i<n_max; i++)
         sum += kappa[i];
-    assert(sum>0);
+    if(sum<0)
+        throw invalid_argument("Invalid kappa");
     return sum;
 }
 
 int Node :: get_index()
 {
-    assert(index>=0);
+    if(index<0)
+        throw invalid_argument("index not set");
 	return index;
 }
 
 void Node :: update_kappa()
 {
-    assert(isleaf());
+    if (!isleaf())
+        throw invalid_argument("not kappa");
     add_kappa(-kappa_tot);
     kappa_tot = 0;
     add_kappa(kappa_sum());
     selected = false;
-    assert(kappa_tot==kappa_sum());
+    if(kappa_tot!=kappa_sum())
+        throw invalid_argument("kappa_tot!=kappa_sum()");
+
 }
 
 void Node :: add_kappa(double kappa_in)
@@ -146,14 +152,14 @@ bool Node :: isleaf()
 
 Node* Node :: return_chosen_event(double xi)
 {
-    assert(xi<kappa_sum());
     for(jump_ID=0; !selected; jump_ID++)
     {
         xi -= kappa[jump_ID];
         if(xi<0)
             selected = true;
     }
-    assert(("Jump ID surpassed the maximum number of jump possibilities", --jump_ID<N_MAX));
+    if(jump_ID>N_MAX);
+        throw invalid_argument("Jump ID surpassed the maximum number of jump possibilities");
     return this;
 }
 
@@ -166,12 +172,14 @@ Node* Node :: choose_event(double xi)
 {
     if(parent==NULL)
         xi *= get_kappa();
-    assert(xi<get_kappa());
+    if(xi>=get_kappa())
+        throw invalid_argument("Number too large");
     if(isleaf())
         return return_chosen_event(xi);
-    assert(("Kappa value is not consistent", abs(kappa_tot-minor->get_kappa()-major->get_kappa())<1.0e-4));
-    assert(("Leaves probably not properly updated", (!minor->selected && !major->selected)));
-        
+    if(abs(kappa_tot-minor->get_kappa()-major->get_kappa())>1.0e-4)
+        throw invalid_argument("Kappa value is not consistent");
+    if(minor->selected || major->selected)
+        throw invalid_argument("Leaves probably not properly updated");
     if(xi<minor->get_kappa())
     {
         if (minor->isleaf())
@@ -203,3 +211,38 @@ void Node :: copy_node(Node *node_to_copy) // upbranching when one leaf is delet
         minor->parent = this;
 }
 
+Tree :: Tree() : {
+    Node *head = new Node;
+    Node *current_node;
+    selected = false
+}
+
+void Tree :: append(double *kappa_in, int index_in){
+    head->append_kappa(kappa_in, index_in);
+}
+
+void Tree :: choose_event(double xi){
+    current_node = head->choose_event(xi);
+    selected = true
+}
+
+int Tree :: get_index(){
+    if (selected)
+        return current_node->get_index();
+    else
+        throw invalid_argument("No jump selected");
+}
+
+int Tree :: get_jump_id(){
+    if (selected)
+        return current_node->get_jump_ID();
+    else
+        throw invalid_argument("No jump selected");
+}
+
+void Tree :: remove(){
+    if (selected)
+        current_node->remove();
+    else
+        throw invalid_argument("No jump selected");
+}

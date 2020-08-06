@@ -29,3 +29,14 @@ class Node
         int get_jump_ID();
 };
 
+class Tree{
+    private:
+        Tree();
+        bool selected;
+
+    public:
+        void append(double*, int);
+        int get_index();
+        int get_jump_id();
+        void remove();
+};
