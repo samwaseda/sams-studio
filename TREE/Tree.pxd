@@ -10,3 +10,4 @@ cdef extern from "Tree.h":
         int get_index() except +
         int get_jump_id() except +
         void remove() except +
+        void choose_event(double) except +

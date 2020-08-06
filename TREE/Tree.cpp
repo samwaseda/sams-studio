@@ -26,7 +26,8 @@ Node :: ~Node(){
         }
         else
             delete parent;
-        delete major, minor;
+        delete major;
+        delete minor;
     }
 }
 
@@ -50,7 +51,7 @@ void Node :: set_kappa(double *kappa_in, int index_in, bool propagate_kappa)
     if (propagate_kappa)
         add_kappa(kappa_sum());
     else
-    	kappa_tot = kappa_sum();
+        kappa_tot = kappa_sum();
 }
 
 double Node :: kappa_sum(int n_max)
@@ -69,7 +70,7 @@ int Node :: get_index()
 {
     if(index<0)
         throw invalid_argument("index not set");
-	return index;
+    return index;
 }
 
 void Node :: update_kappa()
@@ -158,14 +159,14 @@ Node* Node :: return_chosen_event(double xi)
         if(xi<0)
             selected = true;
     }
-    if(jump_ID>N_MAX);
+    if(jump_ID>N_MAX)
         throw invalid_argument("Jump ID surpassed the maximum number of jump possibilities");
     return this;
 }
 
 int Node :: get_jump_ID()
 {
-	return jump_ID;
+    return jump_ID;
 }
 
 Node* Node :: choose_event(double xi)
@@ -211,10 +212,9 @@ void Node :: copy_node(Node *node_to_copy) // upbranching when one leaf is delet
         minor->parent = this;
 }
 
-Tree :: Tree() : {
-    Node *head = new Node;
-    Node *current_node;
-    selected = false
+Tree :: Tree() : selected(false){
+    head = new Node;
+    current_node = new Node;
 }
 
 void Tree :: append(double *kappa_in, int index_in){
@@ -223,7 +223,7 @@ void Tree :: append(double *kappa_in, int index_in){
 
 void Tree :: choose_event(double xi){
     current_node = head->choose_event(xi);
-    selected = true
+    selected = true;
 }
 
 int Tree :: get_index(){

@@ -1,3 +1,6 @@
+#ifndef TREE_H
+#define TREE_H
+
 #include<iostream>
 #include<cmath>
 #define N_MAX 4
@@ -10,8 +13,8 @@ class Node
         bool selected;
         Node *minor, *major, *parent;
     public:
-    Node();
-    ~Node();
+        Node();
+        ~Node();
         void set_kappa(double *, int index_in=-1, bool propagate_kappa=false);
         void add_kappa(double);
         void update_kappa();
@@ -31,12 +34,15 @@ class Node
 
 class Tree{
     private:
-        Tree();
         bool selected;
+        Node *head, *current_node;
 
     public:
+        Tree();
         void append(double*, int);
         int get_index();
         int get_jump_id();
         void remove();
+        void choose_event(double);
 };
+#endif
