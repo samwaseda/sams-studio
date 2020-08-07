@@ -43,7 +43,7 @@ void Node :: remove()
     }
 }
 
-void Node :: set_kappa(double *kappa_in, int index_in, bool propagate_kappa)
+void Node :: set_kappa(vector<double> &kappa_in, int index_in, bool propagate_kappa)
 {
     if (index_in>=0)
         index = index_in;
@@ -54,13 +54,13 @@ void Node :: set_kappa(double *kappa_in, int index_in, bool propagate_kappa)
         kappa_tot = kappa_sum();
 }
 
-double Node :: kappa_sum(int n_max)
+double Node :: kappa_sum()
 {
     if(!isleaf())
         throw invalid_argument("Not leaf");
     double sum=0;
-    for(int i=0; i<n_max; i++)
-        sum += kappa[i];
+    for(int i=0; i<int(kappa.size()); i++)
+        sum += kappa.at(i);
     if(sum<0)
         throw invalid_argument("Invalid kappa");
     return sum;
@@ -100,7 +100,7 @@ double Node :: get_kappa()
     return kappa_tot;
 }
 
-void Node :: append_kappa(double *kappa_in, int index_in)
+void Node :: append_kappa(vector<double> &kappa_in, int index_in)
 {
     if(kappa_tot==0 && isleaf())
     {                                   // This should be only relevant
@@ -123,7 +123,7 @@ void Node :: append_kappa(double *kappa_in, int index_in)
     }
 }
 
-Node * Node :: create_node(double *kappa_in, int index_in, bool propagate_kappa)
+Node * Node :: create_node(vector<double> &kappa_in, int index_in, bool propagate_kappa)
 {
     Node *new_node = new Node;
     new_node->parent = this;
@@ -155,11 +155,11 @@ Node* Node :: return_chosen_event(double xi)
 {
     for(jump_ID=0; !selected; jump_ID++)
     {
-        xi -= kappa[jump_ID];
+        xi -= kappa.at(jump_ID);
         if(xi<0)
             selected = true;
     }
-    if(jump_ID>N_MAX)
+    if(jump_ID>int(kappa.size()))
         throw invalid_argument("Jump ID surpassed the maximum number of jump possibilities");
     return this;
 }
@@ -217,7 +217,7 @@ Tree :: Tree() : selected(false){
     current_node = new Node;
 }
 
-void Tree :: append(double *kappa_in, int index_in){
+void Tree :: append(vector<double> &kappa_in, int index_in){
     head->append_kappa(kappa_in, index_in);
 }
 

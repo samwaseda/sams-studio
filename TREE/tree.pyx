@@ -11,16 +11,16 @@ cdef class Tree:
     cdef Treecpp c_tree
 
     def __cinit__(self):
-        self.number_of_atoms = None
-        self.number_of_possible_jumps = 4
+        pass
 
     def choose_event(self, kappa):
         self.c_tree.choose_event(kappa)
 
     def append(self, kappa, indices):
-        kappa = np.array(kappa).reshape(-1, self.number_of_possible_jumps)
         if len(kappa) != len(indices):
             raise ValueError('Length of kappa must be the same as that of indices')
+        for kk, ii in zip(kappa, indices):
+            self.c_tree.append(kk, ii)
 
     def remove(self):
         self.c_tree.remove()
