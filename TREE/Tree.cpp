@@ -162,7 +162,7 @@ Node* Node :: return_chosen_event(double xi)
 
 int Node :: get_jump_ID()
 {
-    return jump_ID;
+    return jump_ID-1;
 }
 
 Node* Node :: choose_event(double xi)
