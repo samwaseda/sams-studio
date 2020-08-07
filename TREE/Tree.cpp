@@ -61,7 +61,7 @@ double Node :: kappa_sum()
     double sum=0;
     for(int i=0; i<int(kappa.size()); i++)
         sum += kappa.at(i);
-    if(sum<0)
+    if(sum<=0)
         throw invalid_argument("Invalid kappa");
     return sum;
 }
@@ -73,17 +73,17 @@ int Node :: get_index()
     return index;
 }
 
-void Node :: update_kappa()
+void Node :: update_kappa(vector<double> &kappa_in)
 {
+    kappa = kappa_in;
     if (!isleaf())
-        throw invalid_argument("not kappa");
+        throw invalid_argument("not leaf");
     add_kappa(-kappa_tot);
     kappa_tot = 0;
     add_kappa(kappa_sum());
     selected = false;
     if(kappa_tot!=kappa_sum())
         throw invalid_argument("kappa_tot!=kappa_sum()");
-
 }
 
 void Node :: add_kappa(double kappa_in)
@@ -131,16 +131,12 @@ Node * Node :: create_node(vector<double> &kappa_in, int index_in, bool propagat
     return new_node;
 }
 
-void Node :: get_structure() // only relevant for debugging
+string Node :: get_structure() // only relevant for debugging
 {
     if(isleaf())
-    {
-        cout<<"Leaf: "<<index<<" "<<parent->index<<" "<<kappa_tot<<endl;
-        return;
-    }
-    cout<<"Node: "<<index<<" "<<minor->index<<" "<<major->index<<" "<<kappa_tot<<endl;
-    minor->get_structure();
-    major->get_structure();
+        return "Leaf: "+to_string(index)+" "+to_string(parent->index)+" "+to_string(kappa_tot);
+    string to_return="Node: "+to_string(index)+" "+to_string(minor->index)+" "+to_string(major->index)+" "+to_string(kappa_tot)+"\n";
+    return minor->get_structure()+major->get_structure()+to_return;
 }
 
 bool Node :: isleaf()
@@ -240,9 +236,24 @@ int Tree :: get_jump_id(){
         throw invalid_argument("No jump selected");
 }
 
+double Tree :: get_kappa(){
+    return head->get_kappa();
+}
+
 void Tree :: remove(){
     if (selected)
         current_node->remove();
     else
         throw invalid_argument("No jump selected");
+}
+
+void Tree :: update_kappa(vector<double> &kappa_in){
+    if (!selected)
+        throw invalid_argument("No jump selected");
+    current_node->update_kappa(kappa_in);
+    selected = false;
+}
+
+string Tree :: get_structure(){
+    return head->get_structure();
 }

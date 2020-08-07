@@ -16,23 +16,23 @@ class Node
         int index, jump_ID;
         bool selected;
         Node *minor, *major, *parent;
+        double kappa_sum();
+        Node * create_node(vector<double>&, int index_in=-1, bool propagate_kappa=false);
+        Node* return_chosen_event(double);
+        bool isleaf();
+        void copy_node(Node *);
     public:
         Node();
         ~Node();
+        void update_kappa(vector<double>&);
         void set_kappa(vector<double>&, int index_in=-1, bool propagate_kappa=false);
         void add_kappa(double);
-        void update_kappa();
         void remove();
         double get_kappa();
         void append_kappa(vector<double>&, int index_in=-1);
-        double kappa_sum();
-        Node * create_node(vector<double>&, int index_in=-1, bool propagate_kappa=false);
-        void get_structure();
-        bool isleaf();
+        string get_structure();
         int get_index();
         Node * choose_event(double);
-        Node* return_chosen_event(double);
-        void copy_node(Node *);
         int get_jump_ID();
 };
 
@@ -43,10 +43,13 @@ class Tree{
 
     public:
         Tree();
+        void update_kappa(vector<double>&);
         void append(vector<double>&, int);
         int get_index();
         int get_jump_id();
         void remove();
         void choose_event(double);
+        double get_kappa();
+        string get_structure();
 };
 #endif
