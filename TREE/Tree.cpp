@@ -175,8 +175,8 @@ Node* Node :: choose_event(double xi)
         return return_chosen_event(xi);
     if(abs(kappa_tot-minor->get_kappa()-major->get_kappa())>1.0e-4)
         throw invalid_argument("Kappa value is not consistent");
-    if(minor->selected || major->selected)
-        throw invalid_argument("Leaves probably not properly updated");
+    //if(minor->selected || major->selected)
+    //    throw invalid_argument("Leaves probably not properly updated");
     if(xi<minor->get_kappa())
     {
         if (minor->isleaf())
