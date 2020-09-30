@@ -382,6 +382,7 @@ void average_energy::reset()
 
 MC::MC(): n_tot(0), debug_mode(false), kB(8.617333262145e-5), lambda(-1), eta(1), E_min(0)
 {
+    srand (time(NULL));
     reset();
 }
 

@@ -1,7 +1,8 @@
 #ifndef MC_H
 #define MC_H
 
-#include<random>
+#include<cstdlib>
+#include<ctime>
 #include<valarray>
 #include <chrono>
 
@@ -69,7 +70,6 @@ class MC{
         bool debug_mode;
         double kB, lambda, eta, E_min;
         Atom *atom;
-        default_random_engine generator;
         average_energy E_tot;
         bool thermodynamic_integration();
         bool accept(int, double, double);
