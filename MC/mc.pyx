@@ -157,6 +157,22 @@ cdef class MC:
             return m
         return np.linalg.norm(m)
 
+    def get_output(self, index=0):
+        """
+            Args:
+                index (int): Potential index (only for thermodynamic integration)
+
+            Returns:
+                dict of output values
+        """
+        return {'energy': self.get_energy(index=index),
+                'mean_energy': self.get_mean_energy(index=index),
+                'magnetization': self.get_average_magnetization(),
+                'energy_variance': self.get_energy_variance(index=index),
+                'acceptance_ratio': self.get_acceptance_ratio(),
+                'steps_per_second': self.get_steps_per_second()}
+
+
     def run(self, temperature, number_of_iterations=1, reset=True):
         """
             Args:
