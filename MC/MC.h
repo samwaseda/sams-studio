@@ -63,6 +63,19 @@ class average_energy
         void reset();
 };
 
+class Metadynamics{
+    private:
+        vector<double> hist;
+        double denominator, energy_increment, max_range, cutoff;
+    public:
+        bool initialized;
+        Metadynamics();
+        void set_metadynamics(double, double, double, int, double);
+        double get_energy(double);
+        void append_value(double);
+        vector<double> get_histogram();
+};
+
 class MC{
     private:
         long long int acc, MC_count;
@@ -76,6 +89,10 @@ class MC{
         bool accept(int, double, double);
         bool bose_einstein();
         vector<int> selectable_ID;
+        valarray<double> magnetization;
+        Metadynamics meta;
+        void reset_magnetization();
+        void update_magnetization(int, bool backward=false);
     public:
         MC();
         ~MC();
@@ -106,16 +123,7 @@ class MC{
             int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
         void select_ID(vector<int>);
         void reset();
-        void set_metadynamics(double, double, double, int);
-};
-
-class Metadynamics{
-    private:
-        vector<double> hist;
-        double length_scale, energy_increment, max_range;
-    public:
-        void set_metadynamics(double, double, double, int);
-        double get_energy(double);
+        void set_metadynamics(double, double, double, int, double);
         vector<double> get_histogram();
 };
 
