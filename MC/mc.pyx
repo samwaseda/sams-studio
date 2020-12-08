@@ -152,7 +152,7 @@ cdef class MC:
             Returns:
                 average magnetization value or vector
         """
-        return self.c_mc.get_magnetization()
+        return np.array(self.c_mc.get_magnetization())
 
     def get_output(self, index=0):
         """

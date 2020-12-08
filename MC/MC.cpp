@@ -295,6 +295,10 @@ void Atom::propose_new_state(){
         m *= -1;
 }
 
+valarray<double> Atom::delta_m(){
+    return m-m_old;
+}
+
 void Atom::set_magnitude(double ddm, double ddphi, bool flip_in)
 {
     if(ddm<0 || ddphi<0)
@@ -635,6 +639,8 @@ void MC::run(double T_in, int number_of_iterations){
                 atom[i].check_consistency();
         }
         magnetization_hist.push_back(m_norm(magnetization));
+        if (meta.initialized)
+            meta.append_value(m_norm(magnetization));
         E_tot.add(dEE_tot[0]);
         if(thermodynamic_integration())
             E_tot.add(dEE_tot[1], false, 1);
