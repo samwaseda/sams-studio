@@ -462,10 +462,11 @@ bool MC::thermodynamic_integration(){
 bool MC::accept(int ID_rand, double kBT, double E_current){
     double dEE = 0;
     if (meta.initialized)
-        dEE -= meta.get_energy(sqrt((magnetization*magnetization).sum()));
+        dEE -= meta.get_biased_energy(sqrt((magnetization*magnetization).sum()));
     atom[ID_rand].propose_new_state();
+    update_magnetization(ID_rand);
     if (meta.initialized)
-        dEE += meta.get_energy(sqrt((magnetization*magnetization).sum()));
+        dEE += meta.get_biased_energy(sqrt((magnetization*magnetization).sum()));
     dEE += atom[ID_rand].dE();
     if(thermodynamic_integration())
         dEE = (1-lambda)*dEE+lambda*atom[ID_rand].dE(1);
@@ -573,6 +574,14 @@ void MC::run_debug(){
         throw invalid_argument("revoke not worked properly for total energy");
     for(int i=0; i<n_tot; i++)
         atom[i].check_consistency();
+    reset();
+    run(1000, 100);
+    for(int i_atom=0; i_atom<n_tot; i_atom++)
+        for(int ix=0; ix<3; ix++)
+            magnetization[ix] -= atom[i_atom].m[ix]/n_tot;
+    if (abs(magnetization).sum()>1.0e-6)
+        throw invalid_argument("Magnetization wrong: "+to_string(abs(magnetization).sum()));
+    reset();
 }
 
 void MC::run(double T_in, int number_of_iterations){
@@ -607,8 +616,8 @@ void MC::run(double T_in, int number_of_iterations){
             }
             else
             {
-                atom[ID_rand].revoke();
                 update_magnetization(ID_rand, true);
+                atom[ID_rand].revoke();
             }
         }
         for(int i=0; debug_mode && i<2; i++)
@@ -623,6 +632,8 @@ void MC::run(double T_in, int number_of_iterations){
             for(int i=0; i<n_tot; i++)
                 atom[i].check_consistency();
         }
+        if (meta.initialized)
+            meta.append_value(sqrt((magnetization*magnetization).sum()));
         E_tot.add(dEE_tot[0]);
         if(thermodynamic_integration())
             E_tot.add(dEE_tot[1], false, 1);
@@ -705,11 +716,10 @@ void MC::set_metadynamics(
 
 void MC::update_magnetization(int mc_id, bool backward)
 {
-    double signum = 1.0;
     if (backward)
-        signum = -1.0;
-    for (int ix=0; ix<3; ix++)
-        magnetization[ix] += signum*(atom[mc_id].m[ix]-atom[mc_id].m_old[ix])/n_tot;
+        magnetization -= (atom[mc_id].m-atom[mc_id].m_old)/n_tot;
+    else
+        magnetization += (atom[mc_id].m-atom[mc_id].m_old)/n_tot;
 }
 
 vector<double> MC::get_histogram(){
@@ -729,10 +739,8 @@ void MC::reset_magnetization()
     magnetization.resize(3);
     magnetization = 0*magnetization;
     for(int i_atom=0; i_atom<n_tot; i_atom++)
-        for(int ix=0; ix<3; ix++)
-            magnetization[ix] += atom[i_atom].m[ix];
-    for (int ix=0; ix<3; ix++)
-        magnetization[ix] /= n_tot;
+        magnetization += atom[i_atom].m;
+    magnetization /= n_tot;
 }
 
 MC::~MC()
@@ -767,7 +775,7 @@ void Metadynamics::set_metadynamics(
     cutoff = cutoff_in*length_scale_in;
 }
 
-double Metadynamics::get_energy(double m){
+double Metadynamics::get_biased_energy(double m){
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
     if (m>=max_range)
@@ -778,15 +786,19 @@ double Metadynamics::get_energy(double m){
 void Metadynamics::append_value(double m){
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
-    for (int i=max(0, int(hist.size()*(m/max_range-cutoff)));
-         i<min(int(hist.size()), int(hist.size()*(m/max_range+cutoff))); i++)
+    for (int i=max(0, int(hist.size()*(m-cutoff)/max_range));
+         i<min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range)); i++)
         hist.at(i) += energy_increment*exp(
-            -square.value(m-double(hist.size()*m/max_range))/denominator);
+            -square.value(m-max_range*i/hist.size())/denominator);
 }
 
 vector<double> Metadynamics::get_histogram(){
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
-    return hist;
+    vector<double> m_range(hist.size());
+    for (int i=0; i<int(m_range.size()); i++)
+        m_range.at(i) = max_range*i/m_range.size();
+    m_range.insert( m_range.end(), hist.begin(), hist.end() );
+    return m_range;
 }
 

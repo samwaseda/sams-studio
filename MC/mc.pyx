@@ -358,7 +358,7 @@ cdef class MC:
             cutoff (float): Cutoff value (in length_scale unit) above which the Gaussian smearing
                 is considered to be 0
         """
-        if bins > max_range/length_scale:
+        if bins < max_range/length_scale:
             raise ValueError('Number of bins too small for this length_scale and max_range')
         self.c_mc.set_metadynamics(max_range, energy_increment, length_scale, bins, cutoff)
 
@@ -366,10 +366,11 @@ cdef class MC:
         """
         Get histogram of the metadynamics simulation
         """
-        return self.c_mc.get_histogram()
+        return np.array(self.c_mc.get_histogram()).reshape(2, -1, order='C')
 
     def activate_debug(self):
         """
             Activate debug mode (not so helpful though...)
         """
         self.c_mc.activate_debug()
+
