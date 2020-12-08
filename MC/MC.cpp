@@ -732,6 +732,10 @@ vector<double> MC::get_magnetization(){
     return magnetization_hist;
 }
 
+vector<double> MC::get_histogram(){
+    return meta.get_histogram();
+}
+
 void MC::reset()
 {
     acc = 0;
@@ -797,18 +801,48 @@ double Metadynamics::get_biased_energy(double m_new, double m_old){
     return hist.at(int(m_new/mass))-hist.at(int(m_old/mass));
 }
 
-void Metadynamics::append_value(double m){
+double Metadynamics::gauss_exp(double m, int i)
+{
+    return energy_increment*exp(-square.value(m-max_range*i/hist.size())/denominator);
+}
+
+void Metadynamics::append_value(double m)
+{
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
     int i_min = max(0, int(hist.size()*(m-cutoff)/max_range));
     int i_max = min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range));
     for (int i=i_min && !use_derivative; i<i_max; i++)
-        hist.at(i) += energy_increment*exp(
-            -square.value(m-max_range*i/hist.size())/denominator);
+        hist.at(i) += gauss_exp(m, i);
     for (int i=i_min && use_derivative; i<i_max; i++)
     {
         double m_tmp = m-max_range*i/hist.size();
-        hist.at(i) += m_tmp*energy_increment*exp(-square.value(m_tmp)/denominator);
+        hist.at(i) += m_tmp*gauss_exp(m, i);
     }
+}
+
+vector<double> Metadynamics::get_histogram()
+{
+    if (!initialized)
+        throw invalid_argument("metadynamics not initialized yet");
+    vector<double> m_range(hist.size());
+    for (int i=0; i<int(m_range.size()); i++)
+        m_range.at(i) = max_range*i/m_range.size();
+    if (!use_derivative)
+    {
+        m_range.insert( m_range.end(), hist.begin(), hist.end() );
+        return m_range;
+    }
+    vector<double> h_tmp (hist.size(), 0);
+    for (int ih=0; ih<int(hist.size()); ih++)
+    {
+        double m = hist.at(ih);
+        int i_min = max(0, int(hist.size()*(m-cutoff)/max_range));
+        int i_max = min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range));
+        for (int i=i_min; i<i_max; i++)
+            h_tmp.at(i) += gauss_exp(m, i);
+    }
+    m_range.insert( m_range.end(), h_tmp.begin(), h_tmp.end() );
+    return m_range;
 }
 

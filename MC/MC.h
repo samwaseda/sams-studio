@@ -70,12 +70,14 @@ class Metadynamics{
         vector<double> hist;
         double denominator, energy_increment, max_range, cutoff;
         bool use_derivative;
+        double gauss_exp(double, int);
     public:
         bool initialized;
         Metadynamics();
         void set_metadynamics(double, double, double, int, double, int);
         double get_biased_energy(double, double);
         void append_value(double);
+        vector<double> get_histogram();
 };
 
 class MC{
@@ -128,6 +130,7 @@ class MC{
         void reset();
         void set_metadynamics(double, double, double, int, double, int);
         vector<double> get_magnetization();
+        vector<double> get_histogram();
 };
 
 struct Magnitude{
