@@ -104,6 +104,7 @@ class MC{
         double run_gradient_descent(int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
         void select_ID(vector<int>);
         void reset();
+        void set_metadynamics(double, double, double, int);
 };
 
 struct Magnitude{

@@ -340,6 +340,24 @@ cdef class MC:
         """
         self.c_mc.run_debug()
 
+    def set_metadynamics(self, max_range=4, energy_increment=1e-3, length_scale=0.1, bins=100):
+        """
+        Set metadynamics calculation. Currently only the average magnetization can be chosen as the
+        collective variable.
+
+        Args:
+            max_range (float): Maximum magnetization value (larger: less accurate; smaller:
+                potentially misses free energy minimum)
+            energy_increment (float): Energy increment (or prefactor) for the Gaussian histogram
+                (larger: less accurate; smaller: slower convergence)
+            length_scale (float): Magnetization length scale (or Gaussian smearing) (larger:
+                potentially smears out free energy minimum; smaller: MC could become unstable)
+            bins (int): Number of bins for histogram (larger: slower; smaller: less accurate)
+        """
+        if bins > max_range/length_scale:
+            raise ValueError('Number of bins too small for this length_scale and max_range')
+        self.c_mc.set_metadynamics(max_range, energy_increment, length_scale, bins)
+
     def activate_debug(self):
         """
             Activate debug mode (not so helpful though...)

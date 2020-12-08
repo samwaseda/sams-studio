@@ -31,4 +31,5 @@ cdef extern from "MC.h":
         int get_number_of_atoms()
         double run_gradient_descent(int, double, double, double) except +
         void select_ID(vector[int]) except +
+        void set_metadynamics(double, double, double, int) except +
         void reset()
