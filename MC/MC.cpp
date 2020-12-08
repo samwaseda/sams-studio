@@ -733,7 +733,7 @@ vector<double> MC::get_magnetization(){
 }
 
 vector<double> MC::get_histogram(){
-    return meta.get_histogram();
+    return meta.get_histogram(magnetization_hist);
 }
 
 void MC::reset()
@@ -821,7 +821,7 @@ void Metadynamics::append_value(double m)
     }
 }
 
-vector<double> Metadynamics::get_histogram()
+vector<double> Metadynamics::get_histogram(vector<double>& magnetization)
 {
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
@@ -834,9 +834,9 @@ vector<double> Metadynamics::get_histogram()
         return m_range;
     }
     vector<double> h_tmp (hist.size(), 0);
-    for (int ih=0; ih<int(hist.size()); ih++)
+    for (int im=0; im<int(magnetization.size()); im++)
     {
-        double m = hist.at(ih);
+        double m = magnetization.at(im);
         int i_min = max(0, int(hist.size()*(m-cutoff)/max_range));
         int i_max = min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range));
         for (int i=i_min; i<i_max; i++)

@@ -77,7 +77,7 @@ class Metadynamics{
         void set_metadynamics(double, double, double, int, double, int);
         double get_biased_energy(double, double);
         void append_value(double);
-        vector<double> get_histogram();
+        vector<double> get_histogram(vector<double>&);
 };
 
 class MC{
