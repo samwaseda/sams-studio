@@ -503,7 +503,8 @@ double MC::run_gradient_descent(int max_iter, double step_size, double decrement
         dot_product = 0;
         for(int i_atom=0; i_atom<n_tot; i_atom++)
         {
-            dot_product += atom[i_atom].run_gradient_descent(step_size, lambda*thermodynamic_integration());
+            dot_product += atom[i_atom].run_gradient_descent(
+                step_size, lambda*thermodynamic_integration());
             residual = atom[i_atom].get_gradient_residual();
             if(i_atom==0 || residual_max<residual)
                 residual_max = residual;
@@ -549,11 +550,15 @@ void MC::run_debug(){
         for(int j=0; j<3; j++)
             m_tmp.at(j) = atom[i].m[j];
         if(abs(atom[i].E(0, true)-atom[i].E())>1.0e-8)
-            throw invalid_argument("force compute not working: "+to_string(atom[i].E(0, true))+" "+to_string(atom[i].E()));
+            throw invalid_argument(
+                "force compute not working: "
+                +to_string(atom[i].E(0, true))+" "+to_string(atom[i].E()));
         double E_before = get_energy();
         accept(i, 0, 0);
         if(abs(get_energy()-E_before-atom[i].dE())>1.0e-8)
-            throw invalid_argument("energy difference wrong: "+to_string(atom[i].E()-E_before)+" "+to_string(atom[i].dE()));
+            throw invalid_argument(
+                "energy difference wrong: "
+                +to_string(atom[i].E()-E_before)+" "+to_string(atom[i].dE()));
         atom[i].revoke();
         for(int j=0; j<3; j++)
             if(abs(atom[i].m[j]-m_tmp.at(j))>1.0e-8)
@@ -602,7 +607,9 @@ void MC::run(double T_in, int number_of_iterations){
         {
             EE_tot[i] += get_energy(i);
             if(abs(EE_tot[i]-dEE_tot[i])>1.0e-6*n_tot)
-                throw invalid_argument( "Problem with the energy difference "+to_string(EE_tot[i])+" "+to_string(dEE_tot[i]) );
+                throw invalid_argument(
+                    "Problem with the energy difference "
+                    +to_string(EE_tot[i])+" "+to_string(dEE_tot[i]) );
             if(!thermodynamic_integration())
                 break;
             for(int i=0; i<n_tot; i++)
@@ -692,5 +699,10 @@ void MC::reset()
 MC::~MC()
 {
     delete [] atom;
+}
+
+void Metadynamics::set_metadynamics(
+    double max_range, double energy_increment, double length_scale, int bins){
+    return;
 }
 

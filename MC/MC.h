@@ -23,7 +23,8 @@ class Atom{
         vector<Product*> heisen_func[2];
         vector<Atom*> neigh[2];
         int acc, count;
-        bool E_uptodate[2], dE_uptodate[2], debug, flip; // This does not work when neighbors change their m
+        // This does not work when neighbors change their m
+        bool E_uptodate[2], dE_uptodate[2], debug, flip;
         void update_flag(bool ff=false);
         friend Product;
     public:
@@ -101,10 +102,21 @@ class MC{
         int get_number_of_atoms();
         void run_debug();
         void set_magnitude(vector<double>, vector<double>, vector<int>);
-        double run_gradient_descent(int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
+        double run_gradient_descent(
+            int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
         void select_ID(vector<int>);
         void reset();
         void set_metadynamics(double, double, double, int);
+};
+
+class Metadynamics{
+    private:
+        vector<double> hist;
+        double length_scale, energy_increment, max_range;
+    public:
+        void set_metadynamics(double, double, double, int);
+        double get_energy(double);
+        vector<double> get_histogram();
 };
 
 struct Magnitude{
