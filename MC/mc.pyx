@@ -147,15 +147,12 @@ cdef class MC:
         """
         self.c_mc.set_magnetic_moments(np.array(magmoms).flatten())
 
-    def get_average_magnetization(self, vector=False):
+    def get_magnetization(self):
         """
             Returns:
                 average magnetization value or vector
         """
-        m = np.mean(self.get_magnetic_moments(), axis=0)
-        if vector:
-            return m
-        return np.linalg.norm(m)
+        return self.c_mc.get_magnetization()
 
     def get_output(self, index=0):
         """
@@ -167,7 +164,7 @@ cdef class MC:
         """
         return {'energy': self.get_energy(index=index),
                 'mean_energy': self.get_mean_energy(index=index),
-                'magnetization': self.get_average_magnetization(),
+                'magnetization': self.get_magnetization(),
                 'energy_variance': self.get_energy_variance(index=index),
                 'acceptance_ratio': self.get_acceptance_ratio(),
                 'steps_per_second': self.get_steps_per_second()}
@@ -341,7 +338,13 @@ cdef class MC:
         self.c_mc.run_debug()
 
     def set_metadynamics(
-        self, max_range=4, energy_increment=1e-3, length_scale=0.1, bins=100, cutoff=5
+        self,
+        max_range=4,
+        energy_increment=1e-3,
+        length_scale=0.1,
+        bins=100,
+        cutoff=5,
+        use_derivative=True,
     ):
         """
         Set metadynamics calculation. Currently only the average magnetization can be chosen as the
@@ -357,16 +360,18 @@ cdef class MC:
             bins (int): Number of bins for histogram (larger: slower; smaller: less accurate)
             cutoff (float): Cutoff value (in length_scale unit) above which the Gaussian smearing
                 is considered to be 0
+            use_derivative (bool): Use derivative information of metadynamics. This should be set
+                to True if the number of atoms is sufficiently high (>1000) and the MC step
+                magnitude is not too large (around 0.1). In other words, except for code testing,
+                it is unlikely that this should be set to False. If set to False, make sure that
+                the number of bins is large enough for the Metadynamics to make sense (it has to
+                be at least 10 x max_range x n_atoms / displacement_magnitude).
         """
         if bins < max_range/length_scale:
             raise ValueError('Number of bins too small for this length_scale and max_range')
-        self.c_mc.set_metadynamics(max_range, energy_increment, length_scale, bins, cutoff)
-
-    def get_histogram(self):
-        """
-        Get histogram of the metadynamics simulation
-        """
-        return np.array(self.c_mc.get_histogram()).reshape(2, -1, order='C')
+        self.c_mc.set_metadynamics(
+            max_range, energy_increment, length_scale, bins, cutoff, use_derivative*1
+        )
 
     def activate_debug(self):
         """

@@ -10,6 +10,7 @@ using namespace std;
 
 double zufall();
 double power(double, int);
+double m_norm(valarray<double>);
 
 struct Product;
 struct Magnitude;;
@@ -33,6 +34,7 @@ class Atom{
         Atom();
         ~Atom();
         void set_m(valarray<double>&, bool diff=false);
+        valarray<double> delta_m();
         double get_gradient_residual();
         double get_acceptance_ratio();
         double get_magnitude(int exponent=1, bool old=false);
@@ -67,11 +69,12 @@ class Metadynamics{
     private:
         vector<double> hist;
         double denominator, energy_increment, max_range, cutoff;
+        bool use_derivative;
     public:
         bool initialized;
         Metadynamics();
-        void set_metadynamics(double, double, double, int, double);
-        double get_biased_energy(double);
+        void set_metadynamics(double, double, double, int, double, int);
+        double get_biased_energy(double, double);
         void append_value(double);
         vector<double> get_histogram();
 };
@@ -90,6 +93,7 @@ class MC{
         bool bose_einstein();
         vector<int> selectable_ID;
         valarray<double> magnetization;
+        vector<double> magnetization_hist;
         Metadynamics meta;
         void reset_magnetization();
         void update_magnetization(int, bool backward=false);
@@ -123,8 +127,8 @@ class MC{
             int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
         void select_ID(vector<int>);
         void reset();
-        void set_metadynamics(double, double, double, int, double);
-        vector<double> get_histogram();
+        void set_metadynamics(double, double, double, int, double, int);
+        vector<double> get_magnetization();
 };
 
 struct Magnitude{

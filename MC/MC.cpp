@@ -4,6 +4,10 @@ double zufall(){
     return 1.0-2.0*((double)rand()/(double)RAND_MAX);
 }
 
+double m_norm(valarray<double> mm){
+    return sqrt((mm*mm).sum());
+}
+
 double power(double x, int exponent){
     switch(exponent){
         case 1:
@@ -460,14 +464,12 @@ bool MC::thermodynamic_integration(){
 }
 
 bool MC::accept(int ID_rand, double kBT, double E_current){
-    double dEE = 0;
-    if (meta.initialized)
-        dEE -= meta.get_biased_energy(sqrt((magnetization*magnetization).sum()));
     atom[ID_rand].propose_new_state();
-    update_magnetization(ID_rand);
+    double dEE = atom[ID_rand].dE();
     if (meta.initialized)
-        dEE += meta.get_biased_energy(sqrt((magnetization*magnetization).sum()));
-    dEE += atom[ID_rand].dE();
+        dEE += meta.get_biased_energy(
+            m_norm(magnetization+atom[ID_rand].delta_m()/n_tot), m_norm(magnetization));
+    update_magnetization(ID_rand);
     if(thermodynamic_integration())
         dEE = (1-lambda)*dEE+lambda*atom[ID_rand].dE(1);
     if(dEE<=0)
@@ -632,8 +634,7 @@ void MC::run(double T_in, int number_of_iterations){
             for(int i=0; i<n_tot; i++)
                 atom[i].check_consistency();
         }
-        if (meta.initialized)
-            meta.append_value(sqrt((magnetization*magnetization).sum()));
+        magnetization_hist.push_back(m_norm(magnetization));
         E_tot.add(dEE_tot[0]);
         if(thermodynamic_integration())
             E_tot.add(dEE_tot[1], false, 1);
@@ -708,10 +709,9 @@ void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<int> flip)
         atom[i].set_magnitude(dm[i], dphi[i], (flip[i]>0));
 }
 
-void MC::set_metadynamics(
-    double max_range, double energy_increment, double length_scale, int bins, double cutoff)
+void MC::set_metadynamics(double aa, double bb, double cc, int dd, double ee, int ff)
 {
-    meta.set_metadynamics(max_range, energy_increment, length_scale, bins, cutoff);
+    meta.set_metadynamics(aa, bb, cc, dd, ee ,ff);
 }
 
 void MC::update_magnetization(int mc_id, bool backward)
@@ -722,8 +722,8 @@ void MC::update_magnetization(int mc_id, bool backward)
         magnetization += (atom[mc_id].m-atom[mc_id].m_old)/n_tot;
 }
 
-vector<double> MC::get_histogram(){
-    return meta.get_histogram();
+vector<double> MC::get_magnetization(){
+    return magnetization_hist;
 }
 
 void MC::reset()
@@ -732,6 +732,7 @@ void MC::reset()
     MC_count = 0;
     E_tot.reset();
     reset_magnetization();
+    magnetization_hist.clear();
 }
 
 void MC::reset_magnetization()
@@ -755,7 +756,8 @@ void Metadynamics::set_metadynamics(
     double energy_increment_in,
     double length_scale_in,
     int bins,
-    double cutoff_in)
+    double cutoff_in,
+    int derivative)
 {
     if (max_range_in<=0)
         throw invalid_argument("max_range must be a positive float");
@@ -773,32 +775,34 @@ void Metadynamics::set_metadynamics(
     denominator = length_scale_in*length_scale_in*2;
     hist.assign(bins, 0);
     cutoff = cutoff_in*length_scale_in;
+    use_derivative = false;
+    if (derivative != 0)
+        use_derivative = true;
 }
 
-double Metadynamics::get_biased_energy(double m){
+double Metadynamics::get_biased_energy(double m_new, double m_old){
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
-    if (m>=max_range)
-        return hist.back();
-    return hist.at(int(hist.size()*m/max_range));
+    double mass = max_range/hist.size();
+    if (m_new>=max_range || m_old>=max_range)
+        return 0;
+    if (use_derivative)
+        return (m_new-m_old)*hist.at(int((m_new+m_old)*0.5/mass));
+    return hist.at(int(m_new/mass))-hist.at(int(m_old/mass));
 }
 
 void Metadynamics::append_value(double m){
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
-    for (int i=max(0, int(hist.size()*(m-cutoff)/max_range));
-         i<min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range)); i++)
+    int i_min = max(0, int(hist.size()*(m-cutoff)/max_range));
+    int i_max = min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range));
+    for (int i=i_min && !use_derivative; i<i_max; i++)
         hist.at(i) += energy_increment*exp(
             -square.value(m-max_range*i/hist.size())/denominator);
-}
-
-vector<double> Metadynamics::get_histogram(){
-    if (!initialized)
-        throw invalid_argument("metadynamics not initialized yet");
-    vector<double> m_range(hist.size());
-    for (int i=0; i<int(m_range.size()); i++)
-        m_range.at(i) = max_range*i/m_range.size();
-    m_range.insert( m_range.end(), hist.begin(), hist.end() );
-    return m_range;
+    for (int i=i_min && use_derivative; i<i_max; i++)
+    {
+        double m_tmp = m-max_range*i/hist.size();
+        hist.at(i) += m_tmp*energy_increment*exp(-square.value(m_tmp)/denominator);
+    }
 }
 
