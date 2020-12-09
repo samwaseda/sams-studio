@@ -640,7 +640,7 @@ void MC::run(double T_in, int number_of_iterations){
         }
         magnetization_hist.push_back(m_norm(magnetization));
         if (meta.initialized)
-            meta.append_value(m_norm(magnetization));
+            meta.append_value(magnetization_hist.back());
         E_tot.add(dEE_tot[0]);
         if(thermodynamic_integration())
             E_tot.add(dEE_tot[1], false, 1);
@@ -810,12 +810,15 @@ void Metadynamics::append_value(double m)
 {
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
-    int i_min = max(0, int(hist.size()*(m-cutoff)/max_range));
-    int i_max = min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range));
-    for (int i=i_min && !use_derivative; i<i_max; i++)
+    for (int i=i_min(m); !use_derivative && i<i_max(m); i++)
         hist.at(i) += gauss_exp(m, i);
-    for (int i=i_min && use_derivative; i<i_max; i++)
+    for (int i=i_min(m); use_derivative && i<i_max(m); i++)
         hist.at(i) += 2*(m-max_range*i/hist.size())/denominator*gauss_exp(m, i);
+}
+
+int Metadynamics::i_min(double m){return max(0, int(hist.size()*(m-cutoff)/max_range));}
+int Metadynamics::i_max(double m){
+    return min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range));
 }
 
 vector<double> Metadynamics::get_histogram(vector<double>& magnetization, int derivative)
@@ -834,12 +837,8 @@ vector<double> Metadynamics::get_histogram(vector<double>& magnetization, int de
     }
     vector<double> h_tmp (hist.size(), 0);
     for (auto m: magnetization)
-    {
-        int i_min = max(0, int(hist.size()*(m-cutoff)/max_range));
-        int i_max = min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range));
-        for (int i=i_min; i<i_max; i++)
+        for (int i=i_min(m); i<i_max(m); i++)
             h_tmp.at(i) += gauss_exp(m, i);
-    }
     m_range.insert( m_range.end(), h_tmp.begin(), h_tmp.end() );
     return m_range;
 }

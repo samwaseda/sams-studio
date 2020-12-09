@@ -71,6 +71,8 @@ class Metadynamics{
         double denominator, energy_increment, max_range, cutoff;
         bool use_derivative;
         double gauss_exp(double, int);
+        int i_min(double);
+        int i_max(double);
     public:
         bool initialized;
         Metadynamics();
