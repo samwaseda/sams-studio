@@ -815,10 +815,7 @@ void Metadynamics::append_value(double m)
     for (int i=i_min && !use_derivative; i<i_max; i++)
         hist.at(i) += gauss_exp(m, i);
     for (int i=i_min && use_derivative; i<i_max; i++)
-    {
-        double m_tmp = m-max_range*i/hist.size();
-        hist.at(i) += m_tmp*gauss_exp(m, i);
-    }
+        hist.at(i) += (m-max_range*i/hist.size())/denominator*gauss_exp(m, i);
 }
 
 vector<double> Metadynamics::get_histogram(vector<double>& magnetization)
