@@ -203,7 +203,7 @@ void Atom::set_m(valarray<double>& m_new, bool diff){
     m_old = m;
     if(diff){
         m += dphi*m_new;
-        m *= sqrt(((m_old+dm*m_new)*(m_old+dm*m_new)).sum()/(m*m).sum());
+        m *= m_norm(m_old+dm*m_new)/m_norm(m);
     }
     else{
         m = m_new;
@@ -723,17 +723,17 @@ void MC::set_metadynamics(double aa, double bb, double cc, int dd, double ee, in
 void MC::update_magnetization(int mc_id, bool backward)
 {
     if (backward)
-        magnetization -= (atom[mc_id].m-atom[mc_id].m_old)/n_tot;
+        magnetization -= atom[mc_id].delta_m()/n_tot;
     else
-        magnetization += (atom[mc_id].m-atom[mc_id].m_old)/n_tot;
+        magnetization += atom[mc_id].delta_m()/n_tot;
 }
 
 vector<double> MC::get_magnetization(){
     return magnetization_hist;
 }
 
-vector<double> MC::get_histogram(){
-    return meta.get_histogram(magnetization_hist);
+vector<double> MC::get_histogram(int derivative){
+    return meta.get_histogram(magnetization_hist, derivative);
 }
 
 void MC::reset()
@@ -815,25 +815,26 @@ void Metadynamics::append_value(double m)
     for (int i=i_min && !use_derivative; i<i_max; i++)
         hist.at(i) += gauss_exp(m, i);
     for (int i=i_min && use_derivative; i<i_max; i++)
-        hist.at(i) += (m-max_range*i/hist.size())/denominator*gauss_exp(m, i);
+        hist.at(i) += 2*(m-max_range*i/hist.size())/denominator*gauss_exp(m, i);
 }
 
-vector<double> Metadynamics::get_histogram(vector<double>& magnetization)
+vector<double> Metadynamics::get_histogram(vector<double>& magnetization, int derivative)
 {
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
+    if (derivative!=0 && !use_derivative)
+        throw invalid_argument("derivative can be taken only if use_derivative is activated");
     vector<double> m_range(hist.size());
     for (int i=0; i<int(m_range.size()); i++)
         m_range.at(i) = max_range*i/m_range.size();
-    if (!use_derivative)
+    if (!use_derivative || derivative!=0)
     {
         m_range.insert( m_range.end(), hist.begin(), hist.end() );
         return m_range;
     }
     vector<double> h_tmp (hist.size(), 0);
-    for (int im=0; im<int(magnetization.size()); im++)
+    for (auto m: magnetization)
     {
-        double m = magnetization.at(im);
         int i_min = max(0, int(hist.size()*(m-cutoff)/max_range));
         int i_max = min(int(hist.size()), int(hist.size()*(m+cutoff)/max_range));
         for (int i=i_min; i<i_max; i++)

@@ -373,11 +373,11 @@ cdef class MC:
             max_range, energy_increment, length_scale, bins, cutoff, use_derivative*1
         )
 
-    def get_metadynamics_free_energy(self):
+    def get_metadynamics_free_energy(self, derivative=False):
          """
          Get free energy of the metadynamics simulation
          """
-         data = np.array(self.c_mc.get_histogram()).reshape(2, -1, order='C')
+         data = np.array(self.c_mc.get_histogram(derivative*1)).reshape(2, -1, order='C')
          return {'magnetization': data[0], 'free_energy': -data[1]}
 
 

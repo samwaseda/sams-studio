@@ -34,5 +34,5 @@ cdef extern from "MC.h":
         void set_metadynamics(double, double, double, int, double, int) except +
         void reset()
         vector[double] get_magnetization() except +
-        vector[double] get_histogram() except +
+        vector[double] get_histogram(int) except +
 
