@@ -19,10 +19,10 @@ structure = Project('.').create_structure(element='Fe',
 					  lattice_constant=2.85)
 structure.set_repeat(10)
 J = 0.1 # eV
-first_shell_tensor = structure.get_shell_matrix(1)
+first_shell_tensor = structure.get_shell_matrix()[0]
 
 mc = MC(len(structure))
-mc.set_heisenberg_coeff(J*first_shell_tensor)
+mc.set_heisenberg_coeff(J*first_shell_tensor.toarray())
 
 mc.run(temperature=300, number_of_iterations=1000)
 ```
