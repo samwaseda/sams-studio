@@ -164,7 +164,7 @@ cdef class MC:
         """
         return {'energy': self.get_energy(index=index),
                 'mean_energy': self.get_mean_energy(index=index),
-                'magnetization': self.get_magnetization(),
+                'magnetization': np.mean(self.get_magnetization()),
                 'energy_variance': self.get_energy_variance(index=index),
                 'acceptance_ratio': self.get_acceptance_ratio(),
                 'steps_per_second': self.get_steps_per_second()}
