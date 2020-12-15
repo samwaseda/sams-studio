@@ -374,11 +374,18 @@ cdef class MC:
         )
 
     def get_metadynamics_free_energy(self, derivative=False):
-         """
-         Get free energy of the metadynamics simulation
-         """
-         data = np.array(self.c_mc.get_histogram(derivative*1)).reshape(2, -1, order='C')
-         return {'magnetization': data[0], 'free_energy': -data[1]}
+        """
+        Get free energy of the metadynamics simulation
+
+        Args:
+        derivative (bool): Whether to return the derivative values (only available if
+            derivative is used for metadynamics).
+
+        Returns:
+            (dict) Containing ndarray of 'magnetization' and 'free_energy'
+        """
+        data = np.array(self.c_mc.get_histogram(derivative*1)).reshape(2, -1, order='C')
+        return {'magnetization': data[0], 'free_energy': -data[1]}
 
 
     def activate_debug(self):

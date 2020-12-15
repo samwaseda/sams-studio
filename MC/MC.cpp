@@ -803,7 +803,7 @@ double Metadynamics::get_biased_energy(double m_new, double m_old){
 
 double Metadynamics::gauss_exp(double m, int i)
 {
-    return energy_increment*exp(-square.value(m-max_range*i/hist.size())/denominator);
+    return energy_increment*exp(-square.value(m-max_range*(i+0.5)/hist.size())/denominator);
 }
 
 void Metadynamics::append_value(double m)
@@ -813,7 +813,7 @@ void Metadynamics::append_value(double m)
     for (int i=i_min(m); !use_derivative && i<i_max(m); i++)
         hist.at(i) += gauss_exp(m, i);
     for (int i=i_min(m); use_derivative && i<i_max(m); i++)
-        hist.at(i) += 2*(m-max_range*i/hist.size())/denominator*gauss_exp(m, i);
+        hist.at(i) += 2*(m-max_range*(0.5+i)/hist.size())/denominator*gauss_exp(m, i);
 }
 
 int Metadynamics::i_min(double m){return max(0, int(hist.size()*(m-cutoff)/max_range));}
