@@ -92,8 +92,8 @@ class MC{
         Atom *atom;
         average_energy E_tot;
         bool thermodynamic_integration();
-        bool accept(int, double, double);
-        vector<int> selectable_ID;
+        bool accept(int, double);
+        vector<int> selectable_id;
         valarray<double> magnetization;
         vector<double> magnetization_hist;
         Metadynamics meta;
@@ -126,7 +126,7 @@ class MC{
         void set_magnitude(vector<double>, vector<double>, vector<int>);
         double run_gradient_descent(
             int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
-        void select_ID(vector<int>);
+        void select_id(vector<int>);
         void reset();
         void set_metadynamics(double, double, double, int, double, int);
         vector<double> get_magnetization();
@@ -186,17 +186,5 @@ struct J_qui_lin : Product {
     double diff(Atom&, Atom&);
     valarray<double> gradient(Atom&, Atom&);
 } j_qui_lin;
-
-struct J_cross_forward : Product {
-    double value(Atom&, Atom&);
-    double diff(Atom&, Atom&);
-    valarray<double> gradient(Atom&, Atom&);
-} j_cross_forward;
-
-struct J_cross_backward : Product {
-    double value(Atom&, Atom&);
-    double diff(Atom&, Atom&);
-    valarray<double> gradient(Atom&, Atom&);
-} j_cross_backward;
 
 #endif

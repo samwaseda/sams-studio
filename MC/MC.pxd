@@ -27,7 +27,7 @@ cdef extern from "MC.h":
         double set_magnitude(vector[double], vector[double], vector[int]) except +
         int get_number_of_atoms()
         double run_gradient_descent(int, double, double, double) except +
-        void select_ID(vector[int]) except +
+        void select_id(vector[int]) except +
         void set_metadynamics(double, double, double, int, double, int) except +
         void reset()
         vector[double] get_magnetization() except +

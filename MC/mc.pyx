@@ -7,15 +7,15 @@ import numpy as np
 cdef class MC:
     """
 
-        Magnetic Metropolis Monte Carlo module. It does not have to work with pyiron, but for convenience
-        it is strongly recommended to do so. Here's a short example:
+        Magnetic Metropolis Monte Carlo module. It does not have to work with pyiron, but for
+        convenience it is strongly recommended to do so. Here's a short example:
 
             from pyiron import Project
             from mc import MC
 
-            structure = Project('.').create_structure(element='Fe',
-                                  bravais_basis='bcc',
-                                  lattice_constant=2.85)
+            structure = Project('.').create_structure(
+                element='Fe', bravais_basis='bcc', lattice_constant=2.85
+            )
             structure.set_repeat(10)
             J = 0.1 # eV
             first_shell_tensor = structure.get_shell_matrix(1)
@@ -25,14 +25,16 @@ cdef class MC:
 
             mc.run(temperature=300, number_of_iterations=1000)
 
-        The results can be analysed by attributes like `get_mean_energy()` or `get_magnetic_moments()`.
+        The results can be analysed by attributes like `get_mean_energy()` or
+        `get_magnetic_moments()`.
 
         The Hamiltonian H is given in the form:
 
         H = -0.5*sum_ij J_ij*(m_i*m_j)^deg + sum_i A_i*m_i^deg
 
-        The first coefficients (J_ij) can be inserted with set_heisenberg_coeff and the magnitude dependent
-        terms (A_i) can be set via set_landau_coeff. Beware of the signs for the Heisenberg coefficients
+        The first coefficients (J_ij) can be inserted with set_heisenberg_coeff and the
+        magnitude dependent terms (A_i) can be set via set_landau_coeff. Beware of the signs for
+        the Heisenberg coefficients.
     """
     cdef MCcpp c_mc
 
@@ -46,12 +48,11 @@ cdef class MC:
     def set_landau_coeff(self, coeff, deg, index=0):
         """
             Args:
-                coeff (float/list/ndarray): Coefficient to the Landau term. If a single number
-                                            is given, the same parameter is applied to all the
-                                            atoms.
+                coeff (float/list/ndarray): Coefficient to the Landau term. If a single number is
+                    given, the same parameter is applied to all the atoms.
                 deg (int): Polynomial degree (usually an even number)
                 index (int): Potential index for thermodynamic integration (0 or 1; choose 0 if
-                             not thermodynamic integration)
+                    not thermodynamic integration)
 
             Comment:
                 Landau term is given by: sum_i coeff_i*m_i^deg
@@ -68,22 +69,24 @@ cdef class MC:
         """
             Args:
                 coeff (float/list/ndarray): Heisenberg coefficient. If a single number is given,
-                                            the same parameter is applied to all the pairs defined
-                                            in me and neigh. Instead of giving me and neigh, you can
-                                            also give a n_atom x n_atom tensor.
+                    the same parameter is applied to all the pairs defined in me and neigh.
+                    Instead of giving me and neigh, you can also give a n_atom x n_atom tensor.
                 me (list/ndarray): list of indices i (s. definition in the comment)
                 neigh (list/ndarray): list of indices j (s. definition in the comment)
                 deg (int): polynomial degree
                 index (int): potential index for thermodynamic integration (0 or 1; choose 0 if
-                             not thermodynamic integration)
+                    not thermodynamic integration)
             Comment:
-                Heisenberg term is given by: -sum_ij coeff_ij*(m_i*m_j)^deg. Beware of the negative sign.
+                Heisenberg term is given by: -sum_ij coeff_ij*(m_i*m_j)^deg. Beware of the
+                negative sign.
         """
         if i is None and j is None:
             n = self.c_mc.get_number_of_atoms()
             if np.array(coeff).shape!=(n, n):
-                raise ValueError('If i and j are not specified, coeff has to be a 2d tensor with the length equal'
-                                 'to the number of atoms in each direction.')
+                raise ValueError(
+                    'If i and j are not specified, coeff has to be a 2d tensor with the length '
+                    + 'equal to the number of atoms in each direction.'
+                )
             i,j = np.where(coeff!=0)
             coeff = coeff[coeff!=0]
         coeff = np.array([coeff]).flatten()
@@ -235,9 +238,9 @@ cdef class MC:
     def select_id(self, indices):
         """
             Args:
-                indices (list): list of ID's that can be chosen
+                indices (list): list of id's that can be chosen
         """
-        self.c_mc.select_ID(np.array(indices).tolist())
+        self.c_mc.select_id(np.array(indices).tolist())
 
     def get_steps_per_second(self):
         """
@@ -249,15 +252,15 @@ cdef class MC:
     def set_magnitude(self, dm, dphi, flip=1):
         """
             Args:
-                dm (float/list/ndarray): Magnitude variation strength. If a single value is set, the same
-                                         value is used for all the atoms (applies to dphi and dtheta)
+                dm (float/list/ndarray): Magnitude variation strength. If a single value is set,
+                    the same value is used for all the atoms (applies to dphi and dtheta)
                 dphi (float/list/ndarray): Phi variation strength
                 dtheta (float/list/ndarray): Theta variation strength
 
             Comment:
                 MC algorithm proposes a new magnetic moment by
 
-                m_new = m_old+dm*random_number # it is ensured afterwards that m_new won't be negative
+                m_new = abs(m_old+dm*random_number)
                 phi_new = phi_old+dphi*2*PI*random_number;
 
                 where random_number is a random number between -1 and 1.
@@ -300,8 +303,8 @@ cdef class MC:
         use_derivative=True,
     ):
         """
-        Set metadynamics calculation. Currently only the average magnetization can be chosen as the
-        collective variable.
+        Set metadynamics calculation. Currently only the average magnetization can be chosen as
+        the collective variable.
 
         Args:
             max_range (float): Maximum magnetization value (larger: less accurate; smaller:
