@@ -223,53 +223,6 @@ cdef class MC:
     def revoke_qmc(self):
         self.set_eta(1)
 
-    def set_eta(self, val):
-        """
-            Args:
-                val (float): eta value for QMC
-        """
-        if val<0:
-            raise ValueError("eta cannot be negative")
-        self.c_mc.set_eta(val)
-
-    def get_eta(self):
-        """
-            Returns:
-                (float) current eta value
-        """
-        return self.c_mc.get_eta()
-
-    def get_ground_state_energy(self, per_atom=False):
-        """
-            Args:
-                per_atom (bool): return per atom energy instead of total energy
-
-            Returns:
-                energy value
-        """
-        if per_atom:
-            return self.c_mc.get_ground_state_energy()/self.c_mc.get_number_of_atoms()
-        return self.c_mc.get_ground_state_energy()
-
-    def prepare_qmc(self, temperature, number_of_iterations=1, run_twice=True):
-        """
-            Args:
-                temperature (float): Temperature in K
-                number_of_iterations (int): Number of MC steps (internally multiplied
-                                            by the number of atoms)
-                run_twice (bool): run twice to make system converge in the first run
-                                  and measure energy in the second run
-        """
-        if run_twice:
-            self.set_eta(1)
-            self.run(temperature, 1)
-            self.set_eta(0)
-            self.run(temperature, number_of_iterations)
-        self.set_eta(0)
-        self.run(temperature, number_of_iterations)
-        self.set_eta((self.get_mean_energy(per_atom=True)
-                      -self.get_ground_state_energy(per_atom=True))/(8.617e-5*temperature))
-
     def set_lambda(self, val):
         """
             Args:

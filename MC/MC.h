@@ -88,12 +88,11 @@ class MC{
         int n_tot;
         double steps_per_second;
         bool debug_mode;
-        double kB, lambda, eta, E_min;
+        double kB, lambda, E_min;
         Atom *atom;
         average_energy E_tot;
         bool thermodynamic_integration();
         bool accept(int, double, double);
-        bool bose_einstein();
         vector<int> selectable_ID;
         valarray<double> magnetization;
         vector<double> magnetization_hist;
@@ -121,7 +120,6 @@ class MC{
         double get_energy(int);
         double get_mean_energy(int index=0);
         double get_energy_variance(int index=0);
-        double get_ground_state_energy();
         double get_steps_per_second();
         int get_number_of_atoms();
         void run_debug();

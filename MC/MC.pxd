@@ -20,11 +20,8 @@ cdef extern from "MC.h":
         vector[double] get_acceptance_ratios()
         double get_energy(int)
         double get_energy_variance(int)
-        double get_ground_state_energy() except +
         double get_mean_energy(int)
         double set_lambda(double) except +
-        double get_eta() except +
-        void set_eta(double) except +
         void run_debug() except +
         double get_steps_per_second()
         double set_magnitude(vector[double], vector[double], vector[int]) except +

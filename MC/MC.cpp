@@ -388,7 +388,7 @@ void average_energy::reset()
     }
 }
 
-MC::MC(): n_tot(0), debug_mode(false), kB(8.617333262145e-5), lambda(-1), eta(1), E_min(0)
+MC::MC(): n_tot(0), debug_mode(false), kB(8.617333262145e-5), lambda(-1), E_min(0)
 {
     srand (time(NULL));
     reset();
@@ -480,23 +480,9 @@ bool MC::accept(int ID_rand, double kBT, double E_current){
         return true;
     else if(kBT==0)
         return false;
-    if(bose_einstein())
-    {
-        if((exp((E_current-get_ground_state_energy())/kBT/n_tot)-1)/(exp(((E_current-get_ground_state_energy())/n_tot+dEE)/kBT)-1)>rand()/(double)RAND_MAX)
-            return true;
-        else
-            return false;
-    }
-    if(exp(-dEE/(kBT*eta))>(double)(rand())/(double)RAND_MAX)
+    if(exp(-dEE/kBT)>(double)(rand())/(double)RAND_MAX)
         return true;
     return false;
-}
-
-bool MC::bose_einstein()
-{
-    if(eta>0)
-        return false;
-    return true;
 }
 
 double MC::get_energy(int index=0){
@@ -532,26 +518,6 @@ double MC::run_gradient_descent(int max_iter, double step_size, double decrement
     if(E_min>E_min_tmp)
         E_min = E_min_tmp;
     return residual_max;
-}
-
-double MC::get_ground_state_energy(){
-    if(E_min==0)
-    {
-        vector<double> m = get_magnetic_moments();
-        run_gradient_descent(n_tot*n_tot);
-        set_magnetic_moments(m);
-    }
-    return E_min;
-}
-
-double MC::get_eta(){
-    return eta;
-}
-
-void MC::set_eta(double eta_in){
-    if(eta_in<0)
-        throw invalid_argument("Invalid eta value");
-    eta = eta_in;
 }
 
 void MC::run_debug(){
