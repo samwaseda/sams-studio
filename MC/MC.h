@@ -6,19 +6,31 @@
 #include <valarray>
 #include <chrono>
 #include <numeric>
+#include <random>
 
 using namespace std;
 
-double zufall();
 double power(double, int);
 double m_norm(valarray<double>);
+valarray<double> m_cross(valarray<double>&, valarray<double>&);
+
+class RandomNumberFactory{
+    private:
+        default_random_engine generator;
+        normal_distribution<double> distribution;
+    public:
+        valarray<double> on_sphere(int); // size
+        double uniform(bool symmetric=true, double max_value=1.0);
+} rand_generator;
+
+const double hbar = 0.6582119569;
 
 struct Product;
 struct Magnitude;;
 
 class Atom{
     private:
-        double mabs, mabs_old, E_current[2], dE_current[2], dm, dphi, mmax;
+        double mabs, mabs_tmp, E_current[2], dE_current[2], dm, dphi, mmax;
         valarray<double> gradient;
         vector<double> heisen_coeff[2], landau_coeff[2];
         vector<Magnitude*> landau_func[2];
@@ -30,11 +42,13 @@ class Atom{
         void update_flag(bool ff=false);
         friend Product;
     public:
-        valarray<double> m, m_old;
+        void calc_spin_dynamics(double, double, double); // gamma, delta_t, mu_s
+        void update_spin_dynamics();
+        valarray<double> m, m_tmp;
         valarray<double> get_gradient(double); // lambda
         Atom();
         ~Atom();
-        void set_m(valarray<double>&, bool diff=false);
+        void set_m(valarray<double>, bool diff=false);
         valarray<double> delta_m();
         double get_gradient_residual();
         double get_acceptance_ratio();

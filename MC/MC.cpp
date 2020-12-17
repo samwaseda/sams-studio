@@ -1,11 +1,26 @@
 #include "MC.h"
 
-double zufall(){
-    return 1.0-2.0*((double)rand()/(double)RAND_MAX);
+double RandomNumberFactory::uniform(bool symmetric, double max_value){
+    if (symmetric)
+        return max_value*(1.0-2.0*((double)rand()/(double)RAND_MAX));
+    else
+        return max_value*((double)rand()/(double)RAND_MAX);
+}
+
+valarray<double> RandomNumberFactory::on_sphere(int size){
+    valarray<double> m_new(size);
+    for(int i=0; i<size; i++)
+        m_new[i] = uniform();
+    m_new *= uniform()/m_norm(m_new);
+    return m_new;
 }
 
 double m_norm(valarray<double> mm){
     return sqrt((mm*mm).sum());
+}
+
+valarray<double> m_cross(valarray<double>& m_one, valarray<double>& m_two){
+    return m_one*m_two.cshift(1)-m_one.cshift(1)*m_two;
 }
 
 double power(double x, int exponent){
@@ -75,8 +90,7 @@ double J_lin_lin::value(Atom &neigh, Atom &me){
 }
 
 double J_lin_lin::diff(Atom &neigh, Atom &me){
-    return (neigh.m*(me.m-me.m_old)).sum();
-
+    return (neigh.m*(me.m-me.m_tmp)).sum();
 }
 
 valarray<double> J_lin_lin::gradient(Atom &neigh, Atom &me){
@@ -89,8 +103,8 @@ double J_cub_lin::value(Atom &neigh, Atom &me){
 
 double J_cub_lin::diff(Atom &neigh, Atom &me){
     return 0.5*(me.get_magnitude(2)*(me.m*neigh.m).sum()
-                -me.get_magnitude(2, true)*(me.m_old*neigh.m).sum()
-                +neigh.get_magnitude(2)*((me.m-me.m_old)*neigh.m).sum());
+                -me.get_magnitude(2, true)*(me.m_tmp*neigh.m).sum()
+                +neigh.get_magnitude(2)*((me.m-me.m_tmp)*neigh.m).sum());
 }
 
 valarray<double> J_cub_lin::gradient(Atom &neigh, Atom &me){
@@ -103,8 +117,8 @@ double J_qui_lin::value(Atom &neigh, Atom &me){
 
 double J_qui_lin::diff(Atom &neigh, Atom &me){
     return 0.5*(me.get_magnitude(4)*(me.m*neigh.m).sum()
-                -me.get_magnitude(4, true)*(me.m_old*neigh.m).sum()
-                +neigh.get_magnitude(4)*((me.m-me.m_old)*neigh.m).sum());
+                -me.get_magnitude(4, true)*(me.m_tmp*neigh.m).sum()
+                +neigh.get_magnitude(4)*((me.m-me.m_tmp)*neigh.m).sum());
 }
 
 valarray<double> J_qui_lin::gradient(Atom &neigh, Atom &me){
@@ -115,7 +129,7 @@ valarray<double> J_qui_lin::gradient(Atom &neigh, Atom &me){
 Atom::Atom() : mmax(100), acc(0), count(0), debug(false)
 {
     m.resize(3);
-    m_old.resize(3);
+    m_tmp.resize(3);
     gradient.resize(3);
     mabs = 1;
     m[0] = mabs;
@@ -144,7 +158,7 @@ double Atom::get_acceptance_ratio(){
 double Atom::get_magnitude(int exponent, bool old)
 {
     if(old)
-        return power(mabs_old, exponent);
+        return power(mabs_tmp, exponent);
     else
         return power(mabs, exponent);
 }
@@ -175,19 +189,19 @@ double Atom::dE(int index, bool force_compute){
             *neigh[index].at(i_atom), *this);
     for(int i=0; i<int(landau_coeff[index].size()); i++)
         dE_current[index] += landau_coeff[index].at(i)*(
-            landau_func[index].at(i)->value(mabs)-landau_func[index].at(i)->value(mabs_old));
+            landau_func[index].at(i)->value(mabs)-landau_func[index].at(i)->value(mabs_tmp));
     if(!debug)
         dE_uptodate[index] = true;
     return dE_current[index];
 }
 
-void Atom::set_m(valarray<double>& m_new, bool diff){
+void Atom::set_m(valarray<double> m_new, bool diff){
     update_flag(false);
-    mabs_old = mabs;
-    m_old = m;
+    mabs_tmp = mabs;
+    m_tmp = m;
     if(diff){
         m += dphi*m_new;
-        m *= m_norm(m_old+dm*m_new)/m_norm(m);
+        m *= m_norm(m_tmp+dm*m_new)/m_norm(m);
     }
     else{
         m = m_new;
@@ -206,8 +220,8 @@ void Atom::check_consistency() {
 void Atom::revoke(){
     acc--;
     update_flag(false);
-    m = m_old;
-    mabs = mabs_old;
+    m = m_tmp;
+    mabs = mabs_tmp;
 }
 
 void Atom::set_landau_coeff(double value, int deg, int index=0){
@@ -267,17 +281,13 @@ void Atom::clear_landau_coeff(int index){
 }
 
 void Atom::propose_new_state(){
-    valarray<double> m_new(3);
-    for(int i=0; i<3; i++)
-        m_new[i] = zufall();
-    m_new *= zufall()/sqrt((m_new*m_new).sum());
-    set_m(m_new, true);
+    set_m(rand_generator.on_sphere(3), true);
     if(flip && rand()%2==1)
         m *= -1;
 }
 
 valarray<double> Atom::delta_m(){
-    return m-m_old;
+    return m-m_tmp;
 }
 
 void Atom::set_magnitude(double ddm, double ddphi, bool flip_in)
@@ -303,9 +313,9 @@ valarray<double> Atom::get_gradient(double lambda){
                 *neigh[index].at(i_atom), *this);
         for(int i=0; i<int(landau_coeff[index].size()); i++)
             grad += landau_coeff[index].at(i)*(landau_func[index].at(i)->gradient(m));
+        grad_tot += (1-index-lambda*(1-2*index))*grad;
         if(lambda==0)
             break;
-        grad_tot += (1-index-lambda*(1-2*index))*grad;
     }
     return grad_tot;
 }
@@ -318,10 +328,14 @@ double Atom::run_gradient_descent(double h, double lambda){
     valarray<double> grad(3);
     grad = -get_gradient(lambda);
     set_m(grad, true);
-    grad = m-m_old;
+    grad = m-m_tmp;
     double return_value = (gradient*grad).sum();
     gradient = grad;
     return return_value;
+}
+
+void Atom::calc_spin_dynamics(double gamma_s, double delta_t, double mu_s){
+    valarray<double> h_field = -get_gradient(0);
 }
 
 Atom::~Atom(){
@@ -735,15 +749,15 @@ void Metadynamics::set_metadynamics(
         use_derivative = true;
 }
 
-double Metadynamics::get_biased_energy(double m_new, double m_old){
+double Metadynamics::get_biased_energy(double m_new, double m_tmp){
     if (!initialized)
         throw invalid_argument("metadynamics not initialized yet");
     double mass = max_range/hist.size();
-    if (m_new>=max_range || m_old>=max_range)
+    if (m_new>=max_range || m_tmp>=max_range)
         return 0;
     if (use_derivative)
-        return (m_new-m_old)*hist.at(int((m_new+m_old)*0.5/mass));
-    return hist.at(int(m_new/mass))-hist.at(int(m_old/mass));
+        return (m_new-m_tmp)*hist.at(int((m_new+m_tmp)*0.5/mass));
+    return hist.at(int(m_new/mass))-hist.at(int(m_tmp/mass));
 }
 
 double Metadynamics::gauss_exp(double m, int i)
