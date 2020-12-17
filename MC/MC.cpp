@@ -339,37 +339,28 @@ void average_energy::add(double E_in, bool total_energy, int index)
     if (E_in==0)
         return;
     if (total_energy)
-        E_sum[index] = E_in;
+        E_sum.at(index) = E_in;
     else
-        E_sum[index] += E_in;
-    EE[index] += E_sum[index];
-    EE_sq[index] += square.value(E_sum[index]);
-    NN[index] += 1;
+        E_sum.at(index) += E_in;
+    EE.at(index) += E_sum.at(index);
+    EE_sq.at(index) += square.value(E_sum.at(index));
+    NN += 1;
 }
 
 double average_energy::E_mean(int index=0){
-    if(NN[index]>0)
-        return EE[index]/(double)NN[index];
-    else
-        return 0;
+    return EE.at(index)/(double)NN;
 }
 
 double average_energy::E_var(int index=0){
-    if(NN[index]>0)
-        return (EE_sq[index]-square.value(EE[index])/(double)NN[index])/(double)NN[index];
-    else
-        return 0;
+    return (EE_sq.at(index)-square.value(EE.at(index))/(double)NN)/(double)NN;
 }
 
 void average_energy::reset()
 {
-    for(int i=0; i<2; i++)
-    {
-        EE[i] = 0;
-        NN[i] = 0;
-        E_sum[i] = 0;
-        EE_sq[i] = 0;
-    }
+    EE.assign(2, 0);
+    E_sum.assign(2, 0);
+    EE_sq.assign(2, 0);
+    NN = 0;
 }
 
 MC::MC(): n_tot(0), debug_mode(false), kB(8.617333262145e-5), lambda(-1), E_min(0)
@@ -452,20 +443,58 @@ bool MC::thermodynamic_integration(){
     return false;
 }
 
-bool MC::accept(int id_rand, double kBT){
-    atom[id_rand].propose_new_state();
-    double dEE = atom[id_rand].dE();
-    if (meta.initialized)
-        dEE += meta.get_biased_energy(
-            m_norm(magnetization+atom[id_rand].delta_m()/n_tot), m_norm(magnetization));
-    update_magnetization(id_rand);
-    if(thermodynamic_integration())
-        dEE = (1-lambda)*dEE+lambda*atom[id_rand].dE(1);
-    if(dEE<=0)
+vector<double> MC::run_mc(double kBT){
+    int id_rand;
+    double EE_tot[2];
+    vector<double> dEE_tot (2,0);
+    for(int i=0; i<2 && debug_mode; i++)
+        EE_tot[i] = -get_energy(i);
+    for(int i=0; i<n_tot; i++)
+    {
+        MC_count++;
+        id_rand = selectable_id.at(rand()%selectable_id.size());
+        atom[id_rand].propose_new_state();
+        double dEE = atom[id_rand].dE();
+        if (meta.initialized)
+            dEE += meta.get_biased_energy(
+                m_norm(magnetization+atom[id_rand].delta_m()/n_tot), m_norm(magnetization));
+        update_magnetization(id_rand);
+        if(thermodynamic_integration())
+            dEE = (1-lambda)*dEE+lambda*atom[id_rand].dE(1);
+        if(metropolis(kBT, dEE))
+        {
+            acc++;
+            dEE_tot.at(0) += atom[id_rand].dE();
+            if(thermodynamic_integration())
+                dEE_tot.at(1) += atom[id_rand].dE(1);
+        }
+        else
+        {
+            update_magnetization(id_rand, true);
+            atom[id_rand].revoke();
+        }
+    }
+    for(int i=0; debug_mode && i<2; i++)
+    {
+        EE_tot[i] += get_energy(i);
+        if(abs(EE_tot[i]-dEE_tot[i])>1.0e-6*n_tot)
+            throw invalid_argument(
+                "Problem with the energy difference "
+                +to_string(EE_tot[i])+" "+to_string(dEE_tot[i]) );
+        if(!thermodynamic_integration())
+            break;
+        for(int i=0; i<n_tot; i++)
+            atom[i].check_consistency();
+    }
+    return dEE_tot;
+}
+
+bool MC::metropolis(double kBT, double energy_difference){
+    if(energy_difference<=0)
         return true;
     else if(kBT==0)
         return false;
-    if(exp(-dEE/kBT)>(double)(rand())/(double)RAND_MAX)
+    if(exp(-energy_difference/kBT)>(double)(rand())/(double)RAND_MAX)
         return true;
     return false;
 }
@@ -517,7 +546,7 @@ void MC::run_debug(){
                 "force compute not working: "
                 +to_string(atom[i].E(0, true))+" "+to_string(atom[i].E()));
         double E_before = get_energy();
-        accept(i, 0);
+        vector<double> dEE_tot = run_mc(0);
         if(abs(get_energy()-E_before-atom[i].dE())>1.0e-8)
             throw invalid_argument(
                 "energy difference wrong: "
@@ -542,53 +571,18 @@ void MC::run_debug(){
 }
 
 void MC::run(double T_in, int number_of_iterations){
-    double kBT = kB*T_in, dEE_tot[2], EE_tot[2];
+    double kBT = kB*T_in;
+    vector<double> dEE_tot;
     auto begin = std::chrono::high_resolution_clock::now();
-    int id_rand;
     for (int i=0; i<2; i++)
     {
-        EE_tot[i] = get_energy(i);
-        E_tot.add(EE_tot[i], true, i);
+        E_tot.add(get_energy(i), true, i);
         if(!thermodynamic_integration())
             break;
     }
     for(int iter=0; iter<number_of_iterations; iter++)
     {
-        for(int i=0; i<2; i++)
-        {
-            dEE_tot[i] = 0;
-            if (debug_mode)
-                EE_tot[i] = -get_energy(i);
-        }
-        for(int i=0; i<n_tot; i++)
-        {
-            MC_count++;
-            id_rand = selectable_id.at(rand()%selectable_id.size());
-            if(accept(id_rand, kBT))
-            {
-                acc++;
-                dEE_tot[0] += atom[id_rand].dE();
-                if(thermodynamic_integration())
-                    dEE_tot[1] += atom[id_rand].dE(1);
-            }
-            else
-            {
-                update_magnetization(id_rand, true);
-                atom[id_rand].revoke();
-            }
-        }
-        for(int i=0; debug_mode && i<2; i++)
-        {
-            EE_tot[i] += get_energy(i);
-            if(abs(EE_tot[i]-dEE_tot[i])>1.0e-6*n_tot)
-                throw invalid_argument(
-                    "Problem with the energy difference "
-                    +to_string(EE_tot[i])+" "+to_string(dEE_tot[i]) );
-            if(!thermodynamic_integration())
-                break;
-            for(int i=0; i<n_tot; i++)
-                atom[i].check_consistency();
-        }
+        dEE_tot = run_mc(kBT);
         magnetization_hist.push_back(m_norm(magnetization));
         if (meta.initialized)
             meta.append_value(magnetization_hist.back());

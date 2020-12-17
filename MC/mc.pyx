@@ -247,7 +247,7 @@ cdef class MC:
             Returns:
                 Number of MC steps performed per second
         """
-        return self.c_mc.get_steps_per_second()
+        return np.rint(self.c_mc.get_steps_per_second()).astype(int)
 
     def set_magnitude(self, dm, dphi, flip=1):
         """

@@ -1,10 +1,11 @@
 #ifndef MC_H
 #define MC_H
 
-#include<cstdlib>
-#include<ctime>
-#include<valarray>
+#include <cstdlib>
+#include <ctime>
+#include <valarray>
 #include <chrono>
+#include <numeric>
 
 using namespace std;
 
@@ -55,8 +56,8 @@ class Atom{
 class average_energy
 {
     private:
-        double EE[2], E_sum[2], EE_sq[2];
-        int NN[2];
+        vector<double> EE, E_sum, EE_sq;
+        int NN;
     public:
         average_energy();
         void add(double, bool total_energy=false, int index=0);
@@ -92,7 +93,8 @@ class MC{
         Atom *atom;
         average_energy E_tot;
         bool thermodynamic_integration();
-        bool accept(int, double);
+        vector<double> run_mc(double);
+        bool metropolis(double, double);
         vector<int> selectable_id;
         valarray<double> magnetization;
         vector<double> magnetization_hist;
