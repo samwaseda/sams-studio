@@ -7,23 +7,31 @@
 #include <chrono>
 #include <numeric>
 #include <random>
+#include <omp.h>
 
 using namespace std;
 
 double power(double, int);
 double m_norm(valarray<double>);
-valarray<double> m_cross(valarray<double>&, valarray<double>&);
+valarray<double> m_cross(valarray<double>&, valarray<double>);
 
 class RandomNumberFactory{
     private:
         default_random_engine generator;
         normal_distribution<double> distribution;
     public:
-        valarray<double> on_sphere(int); // size
+        valarray<double> on_sphere(int size=3); // size
         double uniform(bool symmetric=true, double max_value=1.0);
+        double normal();
+        valarray<double> n_on_sphere(int size=3); //size
 } rand_generator;
 
-const double hbar = 0.6582119569;
+struct Constants{
+    const double hbar = 0.6582119569;
+    const double kB = 8.617333262145e-5;
+    double damping_parameter = 8.0e-3;
+    double delta_t = 1.0e-3;
+} constants;
 
 struct Product;
 struct Magnitude;;
@@ -42,7 +50,7 @@ class Atom{
         void update_flag(bool ff=false);
         friend Product;
     public:
-        void calc_spin_dynamics(double, double, double); // gamma, delta_t, mu_s
+        void calc_spin_dynamics(double, double, double, double); // gamma, delta_t, mu_s, lambda
         void update_spin_dynamics();
         valarray<double> m, m_tmp;
         valarray<double> get_gradient(double); // lambda
@@ -55,7 +63,7 @@ class Atom{
         double get_magnitude(int exponent=1, bool old=false);
         double E(int index=0, bool force_compute=false);
         double dE(int index=0, bool force_compute=false);
-        double run_gradient_descent(double, double); // h lambda diff
+        double run_gradient_descent(double, double); // h lambda
         void revoke();
         void set_landau_coeff(double, int, int);
         void set_heisenberg_coeff(Atom&, double, int deg=1, int index=0);
@@ -63,6 +71,7 @@ class Atom{
         void clear_heisenberg_coeff(int);
         void activate_debug();
         void propose_new_state();
+        void rescale_magnitude(double);
         void set_magnitude(double, double, bool flip_in=true);
         void check_consistency();
 };
@@ -101,13 +110,13 @@ class MC{
     private:
         long long int acc, MC_count;
         int n_tot;
-        double steps_per_second;
-        bool debug_mode;
-        double kB, lambda, E_min;
+        double steps_per_second, lambda;
+        bool debug_mode, spin_dynamics_flag;
         Atom *atom;
         average_energy E_tot;
         bool thermodynamic_integration();
-        vector<double> run_mc(double);
+        void run_mc(double);
+        void run_spin_dynamics(double, int);
         bool metropolis(double, double);
         vector<int> selectable_id;
         valarray<double> magnetization;
@@ -120,10 +129,8 @@ class MC{
         ~MC();
         void create_atoms(int);
         void activate_debug();
-        void run(double, int number_of_iterations=1);
+        void run(double, int number_of_iterations=1, int threads=1);
         void set_lambda(double);
-        void set_eta(double);
-        double get_eta();
         vector<double> get_magnetic_moments();
         vector<double> get_magnetic_gradients();
         void set_magnetic_moments(vector<double>);
@@ -138,13 +145,17 @@ class MC{
         double get_energy_variance(int index=0);
         double get_steps_per_second();
         int get_number_of_atoms();
-        void run_debug();
         void set_magnitude(vector<double>, vector<double>, vector<int>);
         double run_gradient_descent(
             int, double step_size=1, double decrement=0.001, double diff=1.0e-8);
         void select_id(vector<int>);
         void reset();
         void set_metadynamics(double, double, double, int, double, int);
+        void switch_spin_dynamics(
+            bool on=true,
+            double damping_parameter=8.0e-3,
+            double delta_t=1.0e-3,
+            bool rescale_mag=true);
         vector<double> get_magnetization();
         vector<double> get_histogram(int);
 };
