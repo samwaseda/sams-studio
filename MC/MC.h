@@ -46,6 +46,9 @@ class Atom{
         vector<Atom*> neigh[2];
         int acc, count;
         // This does not work when neighbors change their m
+        struct UpToDate{
+            vector<bool> E, dE;
+        } up_to_date;
         bool E_uptodate[2], dE_uptodate[2], debug, flip;
         void update_flag(bool ff=false);
         friend Product;
@@ -71,7 +74,7 @@ class Atom{
         void clear_heisenberg_coeff(int);
         void activate_debug();
         void propose_new_state();
-        void rescale_magnitude(double);
+        void rescale_magnitude(double, double);
         void set_magnitude(double, double, bool flip_in=true);
         void check_consistency();
 };
@@ -102,6 +105,7 @@ class Metadynamics{
         Metadynamics();
         void set_metadynamics(double, double, double, int, double, int);
         double get_biased_energy(double, double);
+        double get_biased_gradient(double);
         void append_value(double);
         vector<double> get_histogram(vector<double>&, int);
 };

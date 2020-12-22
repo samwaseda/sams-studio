@@ -145,11 +145,8 @@ Atom::Atom() : mabs(1), mmax(100), acc(0), count(0), debug(false)
 }
 
 void Atom::update_flag(bool ff){
-    for(int i=0; i<2; i++)
-    {
-        E_uptodate[i] = ff;
-        dE_uptodate[i] = ff;
-    }
+    up_to_date.E.assign(2, ff);
+    up_to_date.dE.assign(2, ff);
 }
 
 void Atom::activate_debug(){
@@ -171,7 +168,7 @@ double Atom::get_magnitude(int exponent, bool old)
 }
 
 double Atom::E(int index, bool force_compute){
-    if(E_uptodate[index] && !force_compute)
+    if(up_to_date.E.at(index) && !force_compute)
         return E_current[index];
     E_current[index] = 0;
     for(int i_atom=0; i_atom<int(neigh[index].size()); i_atom++)
@@ -181,12 +178,12 @@ double Atom::E(int index, bool force_compute){
     for(int i=0; i<int(landau_coeff[index].size()); i++)
         E_current[index] += landau_coeff[index].at(i)*landau_func[index].at(i)->value(mabs);
     if(!debug)
-        E_uptodate[index] = true;
+        up_to_date.E.at(index) = true;
     return E_current[index];
 }
 
 double Atom::dE(int index, bool force_compute){
-    if(dE_uptodate[index] && !force_compute)
+    if(up_to_date.dE.at(index) && !force_compute)
         return dE_current[index];
     dE_current[index] = 0;
     count++;
@@ -198,7 +195,7 @@ double Atom::dE(int index, bool force_compute){
         dE_current[index] += landau_coeff[index].at(i)*(
             landau_func[index].at(i)->value(mabs)-landau_func[index].at(i)->value(mabs_tmp));
     if(!debug)
-        dE_uptodate[index] = true;
+        up_to_date.dE.at(index) = true;
     return dE_current[index];
 }
 
@@ -206,7 +203,9 @@ void Atom::set_m(valarray<double> m_new, bool diff){
     update_flag(false);
     mabs_tmp = mabs;
     m_tmp = m;
-    if(diff){
+    if(diff && abs(dm-1)+abs(dphi-1)==0)
+        m += m_new;
+    else if(diff){
         m += dphi*m_new;
         m *= m_norm(m_tmp+dm*m_new)/sqrt((m*m).sum());
     }
@@ -297,18 +296,15 @@ valarray<double> Atom::delta_m(){
     return m-m_tmp;
 }
 
-void Atom::rescale_magnitude(double rescaler){
-    if (rescaler==1){
-        if (dm>0)
-            dm = 1;
-        if (dphi>0)
-            dphi = 1;
-    }
+void Atom::rescale_magnitude(double rescale_m, double rescale_phi){
+    if (rescale_m==1 && dm>0)
+        dm = 1;
     else
-    {
-        dm *= rescaler;
-        dphi *= rescaler;
-    }
+        dm *= rescale_m;
+    if (rescale_phi==1 && dphi>0)
+        dphi = 1;
+    else
+        dphi *= rescale_phi;
 }
 
 void Atom::set_magnitude(double ddm, double ddphi, bool flip_in)
@@ -501,15 +497,12 @@ bool MC::thermodynamic_integration(){
 
 void MC::run_spin_dynamics(double kBT, int threads){
     double mu_s = sqrt(2*constants.damping_parameter*constants.hbar*kBT/constants.delta_t);
-    #pragma omp parallel num_threads(threads) shared(atom)
+    #pragma omp parallel num_threads(threads)
     {
         #pragma omp for
         for (int i=0; i<n_tot; i++)
             atom[i].calc_spin_dynamics(
                 constants.damping_parameter, constants.delta_t, mu_s, lambda);
-    }
-    #pragma omp parallel num_threads(threads) shared(atom)
-    {
         #pragma omp for
         for (int i=0; i<n_tot; i++)
             atom[i].update_spin_dynamics();
@@ -705,9 +698,9 @@ void MC::switch_spin_dynamics(bool on, double damping_parameter, double delta_t,
 {
     if (spin_dynamics_flag != on && rescale_mag){
         for (int i=0; i<n_tot && on; i++)
-            atom[i].rescale_magnitude(1);
+            atom[i].rescale_magnitude(1*(damping_parameter>0), 1);
         for (int i=0; i<n_tot && !on; i++)
-            atom[i].rescale_magnitude(0.1);
+            atom[i].rescale_magnitude(0.1*(damping_parameter>0), 0.1);
     }
     spin_dynamics_flag = on;
     if (damping_parameter < 0)
@@ -790,6 +783,17 @@ void Metadynamics::set_metadynamics(
     use_derivative = false;
     if (derivative != 0)
         use_derivative = true;
+}
+
+double Metadynamics::get_biased_gradient(double m){
+    if (!initialized)
+        throw invalid_argument("metadynamics not initialized yet");
+    if (!use_derivative)
+        throw invalid_argument("use_derivative not chosen");
+    double mass = max_range/hist.size();
+    if (m>=max_range)
+        return 0;
+    return hist.at(int(m*0.5/mass));
 }
 
 double Metadynamics::get_biased_energy(double m_new, double m_tmp){
