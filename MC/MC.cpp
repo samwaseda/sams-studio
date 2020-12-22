@@ -809,7 +809,7 @@ double Metadynamics::get_biased_energy(double m_new, double m_tmp){
 
 double Metadynamics::gauss_exp(double m, int i)
 {
-    return energy_increment*exp(-square.value(m-max_range*i/hist.size())/denominator);
+    return energy_increment*exp(-square.value(m-max_range*(0.5+i)/hist.size())/denominator);
 }
 
 void Metadynamics::append_value(double m)
@@ -835,7 +835,7 @@ vector<double> Metadynamics::get_histogram(vector<double>& magnetization, int de
         throw invalid_argument("derivative can be taken only if use_derivative is activated");
     vector<double> m_range(hist.size());
     for (int i=0; i<int(m_range.size()); i++)
-        m_range.at(i) = max_range*i/m_range.size();
+        m_range.at(i) = max_range*(0.5+i)/m_range.size();
     if (!use_derivative || derivative!=0)
     {
         m_range.insert( m_range.end(), hist.begin(), hist.end() );
