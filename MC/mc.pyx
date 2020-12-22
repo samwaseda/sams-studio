@@ -173,7 +173,7 @@ cdef class MC:
                 'steps_per_second': self.get_steps_per_second()}
 
 
-    def run(self, temperature, number_of_iterations=1, reset=True):
+    def run(self, temperature, number_of_iterations=1, reset=True, threads=1):
         """
             Args:
                 temperature (float): Temperature in K
@@ -183,7 +183,7 @@ cdef class MC:
         """
         if reset:
             self.c_mc.reset()
-        self.c_mc.run(temperature, number_of_iterations)
+        self.c_mc.run(temperature, number_of_iterations, threads)
 
     def get_acceptance_ratio(self, individual=False):
         """
@@ -287,12 +287,6 @@ cdef class MC:
             max_iter = self.c_mc.get_number_of_atoms()**2;
         return self.c_mc.run_gradient_descent(max_iter, step_size, decrement, diff)
 
-    def run_debug(self):
-        """
-            run a few test calculations
-        """
-        self.c_mc.run_debug()
-
     def set_metadynamics(
         self,
         max_range=4,
@@ -334,8 +328,8 @@ cdef class MC:
         Get free energy of the metadynamics simulation
 
         Args:
-        derivative (bool): Whether to return the derivative values (only available if
-            derivative is used for metadynamics).
+            derivative (bool): Whether to return the derivative values (only available if
+                derivative is used for metadynamics).
 
         Returns:
             (dict) Containing ndarray of 'magnetization' and 'free_energy'
@@ -343,6 +337,27 @@ cdef class MC:
         data = np.array(self.c_mc.get_histogram(derivative*1)).reshape(2, -1, order='C')
         return {'magnetization': data[0], 'free_energy': -data[1]}
 
+    def switch_spin_dynamics(
+        self, turn_on=True, damping_parameter=8.0e-3, delta_t=1.0e-3, rescale_mag=True
+    ):
+        """
+        Turn on (or off) spin dynamics calculation
+
+        Args:
+            turn_on (bool): Turn on or off (turning it off means mc)
+            damping_parameter (float): damping parameter (default: 8.0e-3)
+            delta_t (float): time discretization in fs (default: 1.0e-3)
+            rescaler_mag (bool): Whether or not rescale the displacement magnitude. Not setting
+                it to True when spin dynamics on might rescale the time scale. This argument is
+                probably going to be removed in the near future.
+
+        The equations are based on this paper:
+        Ma, Pui-Wai, and S. L. Dudarev.
+        "Longitudinal magnetic fluctuations in Langevin spin dynamics."
+        Physical Review B 86.5 (2012): 054416.
+        https://journals.aps.org/prb/pdf/10.1103/PhysRevB.86.054416
+        """
+        self.c_mc.switch_spin_dynamics(1*turn_on, damping_parameter, delta_t, rescale_mag*1)
 
     def activate_debug(self):
         """

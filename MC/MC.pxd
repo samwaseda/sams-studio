@@ -11,7 +11,7 @@ cdef extern from "MC.h":
         void set_heisenberg_coeff(vector[double], vector[int], vector[int], int, int) except +
         void clear_landau_coeff(int) except +
         void clear_heisenberg_coeff(int) except +
-        void run(double, int) except +
+        void run(double, int, int) except +
         void activate_debug()
         vector[double] get_magnetic_moments()
         vector[double] get_magnetic_gradients()
@@ -22,7 +22,6 @@ cdef extern from "MC.h":
         double get_energy_variance(int)
         double get_mean_energy(int)
         double set_lambda(double) except +
-        void run_debug() except +
         double get_steps_per_second()
         double set_magnitude(vector[double], vector[double], vector[int]) except +
         int get_number_of_atoms()
@@ -30,6 +29,7 @@ cdef extern from "MC.h":
         void select_id(vector[int]) except +
         void set_metadynamics(double, double, double, int, double, int) except +
         void reset()
+        void switch_spin_dynamics(bool, double, double, bool) except +
         vector[double] get_magnetization() except +
         vector[double] get_histogram(int) except +
 

@@ -11,16 +11,24 @@ valarray<double> RandomNumberFactory::on_sphere(int size){
     valarray<double> m_new(size);
     for(int i=0; i<size; i++)
         m_new[i] = uniform();
-    m_new *= uniform()/m_norm(m_new);
+    m_new *= uniform()/sqrt((m_new*m_new).sum());
     return m_new;
+}
+
+double RandomNumberFactory::normal(){
+    return distribution(generator);
+}
+
+valarray<double> RandomNumberFactory::n_on_sphere(int size){
+    return normal()*on_sphere(size);
 }
 
 double m_norm(valarray<double> mm){
     return sqrt((mm*mm).sum());
 }
 
-valarray<double> m_cross(valarray<double>& m_one, valarray<double>& m_two){
-    return m_one*m_two.cshift(1)-m_one.cshift(1)*m_two;
+valarray<double> m_cross(valarray<double>& m_one, valarray<double> m_two){
+    return m_one.cshift(1)*m_two.cshift(2)-m_one.cshift(2)*m_two.cshift(1);
 }
 
 double power(double x, int exponent){
@@ -126,23 +134,19 @@ valarray<double> J_qui_lin::gradient(Atom &neigh, Atom &me){
             +0.5*neigh.m*(me.get_magnitude(4)+neigh.get_magnitude(4)));
 }
 
-Atom::Atom() : mmax(100), acc(0), count(0), debug(false)
+Atom::Atom() : mabs(1), mmax(100), acc(0), count(0), debug(false)
 {
     m.resize(3);
     m_tmp.resize(3);
     gradient.resize(3);
-    mabs = 1;
     m[0] = mabs;
     set_magnitude(0, 0);
     update_flag(false);
 }
 
 void Atom::update_flag(bool ff){
-    for(int i=0; i<2; i++)
-    {
-        E_uptodate[i] = ff;
-        dE_uptodate[i] = ff;
-    }
+    up_to_date.E.assign(2, ff);
+    up_to_date.dE.assign(2, ff);
 }
 
 void Atom::activate_debug(){
@@ -164,7 +168,7 @@ double Atom::get_magnitude(int exponent, bool old)
 }
 
 double Atom::E(int index, bool force_compute){
-    if(E_uptodate[index] && !force_compute)
+    if(up_to_date.E.at(index) && !force_compute)
         return E_current[index];
     E_current[index] = 0;
     for(int i_atom=0; i_atom<int(neigh[index].size()); i_atom++)
@@ -174,12 +178,12 @@ double Atom::E(int index, bool force_compute){
     for(int i=0; i<int(landau_coeff[index].size()); i++)
         E_current[index] += landau_coeff[index].at(i)*landau_func[index].at(i)->value(mabs);
     if(!debug)
-        E_uptodate[index] = true;
+        up_to_date.E.at(index) = true;
     return E_current[index];
 }
 
 double Atom::dE(int index, bool force_compute){
-    if(dE_uptodate[index] && !force_compute)
+    if(up_to_date.dE.at(index) && !force_compute)
         return dE_current[index];
     dE_current[index] = 0;
     count++;
@@ -191,7 +195,7 @@ double Atom::dE(int index, bool force_compute){
         dE_current[index] += landau_coeff[index].at(i)*(
             landau_func[index].at(i)->value(mabs)-landau_func[index].at(i)->value(mabs_tmp));
     if(!debug)
-        dE_uptodate[index] = true;
+        up_to_date.dE.at(index) = true;
     return dE_current[index];
 }
 
@@ -199,9 +203,11 @@ void Atom::set_m(valarray<double> m_new, bool diff){
     update_flag(false);
     mabs_tmp = mabs;
     m_tmp = m;
-    if(diff){
+    if(diff && abs(dm-1)+abs(dphi-1)==0)
+        m += m_new;
+    else if(diff){
         m += dphi*m_new;
-        m *= m_norm(m_tmp+dm*m_new)/m_norm(m);
+        m *= m_norm(m_tmp+dm*m_new)/sqrt((m*m).sum());
     }
     else{
         m = m_new;
@@ -290,6 +296,17 @@ valarray<double> Atom::delta_m(){
     return m-m_tmp;
 }
 
+void Atom::rescale_magnitude(double rescale_m, double rescale_phi){
+    if (rescale_m==1 && dm>0)
+        dm = 1;
+    else
+        dm *= rescale_m;
+    if (rescale_phi==1 && dphi>0)
+        dphi = 1;
+    else
+        dphi *= rescale_phi;
+}
+
 void Atom::set_magnitude(double ddm, double ddphi, bool flip_in)
 {
     if(ddm<0 || ddphi<0)
@@ -304,6 +321,8 @@ void Atom::set_magnitude(double ddm, double ddphi, bool flip_in)
 
 valarray<double> Atom::get_gradient(double lambda){
     valarray<double> grad(3), grad_tot(3);
+    if (lambda<0)
+        lambda = 0;
     for(int index=0; index<2; index++)
     {
         if(lambda==1 && index==0)
@@ -313,9 +332,12 @@ valarray<double> Atom::get_gradient(double lambda){
                 *neigh[index].at(i_atom), *this);
         for(int i=0; i<int(landau_coeff[index].size()); i++)
             grad += landau_coeff[index].at(i)*(landau_func[index].at(i)->gradient(m));
-        grad_tot += (1-index-lambda*(1-2*index))*grad;
-        if(lambda==0)
+        if(lambda==0) {
+            grad_tot = grad;
             break;
+        }
+        else
+            grad_tot += (1-index-lambda*(1-2*index))*grad;
     }
     return grad_tot;
 }
@@ -326,7 +348,7 @@ double Atom::get_gradient_residual(){
 
 double Atom::run_gradient_descent(double h, double lambda){
     valarray<double> grad(3);
-    grad = -get_gradient(lambda);
+    grad = -h*get_gradient(lambda);
     set_m(grad, true);
     grad = m-m_tmp;
     double return_value = (gradient*grad).sum();
@@ -334,8 +356,24 @@ double Atom::run_gradient_descent(double h, double lambda){
     return return_value;
 }
 
-void Atom::calc_spin_dynamics(double gamma_s, double delta_t, double mu_s){
-    valarray<double> h_field = -get_gradient(0);
+void Atom::calc_spin_dynamics(
+    double damping_parameter, double delta_t, double mu_s, double lambda){
+    valarray<double> h_field = -get_gradient(lambda);
+    valarray<double> h_stochastic = mu_s*rand_generator.n_on_sphere();
+    if (dm==0) {
+        m_tmp = m_cross(m, h_field+h_stochastic);
+        m_tmp -= damping_parameter*m_cross(m, m_cross(m, h_field));
+    }
+    else {
+        m_tmp = m_cross(m, h_field);
+        m_tmp += h_stochastic;
+        m_tmp += damping_parameter*h_field;
+    }
+    m_tmp *= delta_t/constants.hbar;
+}
+
+void Atom::update_spin_dynamics(){
+    set_m(m_tmp, true);
 }
 
 Atom::~Atom(){
@@ -377,7 +415,7 @@ void average_energy::reset()
     NN = 0;
 }
 
-MC::MC(): n_tot(0), debug_mode(false), kB(8.617333262145e-5), lambda(-1), E_min(0)
+MC::MC(): n_tot(0), lambda(-1), debug_mode(false), spin_dynamics_flag(false)
 {
     srand (time(NULL));
     reset();
@@ -457,7 +495,25 @@ bool MC::thermodynamic_integration(){
     return false;
 }
 
-vector<double> MC::run_mc(double kBT){
+void MC::run_spin_dynamics(double kBT, int threads){
+    double mu_s = sqrt(2*constants.damping_parameter*constants.hbar*kBT/constants.delta_t);
+    #pragma omp parallel num_threads(threads)
+    {
+        #pragma omp for
+        for (int i=0; i<n_tot; i++)
+            atom[i].calc_spin_dynamics(
+                constants.damping_parameter, constants.delta_t, mu_s, lambda);
+        #pragma omp for
+        for (int i=0; i<n_tot; i++)
+            atom[i].update_spin_dynamics();
+    }
+    E_tot.add(get_energy(0), true);
+    if(thermodynamic_integration())
+        E_tot.add(get_energy(1), true);
+    reset_magnetization();
+}
+
+void MC::run_mc(double kBT){
     int id_rand;
     double EE_tot[2];
     vector<double> dEE_tot (2,0);
@@ -471,7 +527,8 @@ vector<double> MC::run_mc(double kBT){
         double dEE = atom[id_rand].dE();
         if (meta.initialized)
             dEE += meta.get_biased_energy(
-                m_norm(magnetization+atom[id_rand].delta_m()/n_tot), m_norm(magnetization));
+                m_norm(magnetization+atom[id_rand].delta_m()/n_tot),
+                sqrt((magnetization*magnetization).sum()));
         update_magnetization(id_rand);
         if(thermodynamic_integration())
             dEE = (1-lambda)*dEE+lambda*atom[id_rand].dE(1);
@@ -500,7 +557,9 @@ vector<double> MC::run_mc(double kBT){
         for(int i=0; i<n_tot; i++)
             atom[i].check_consistency();
     }
-    return dEE_tot;
+    E_tot.add(dEE_tot[0]);
+    if(thermodynamic_integration())
+        E_tot.add(dEE_tot[1], false, 1);
 }
 
 bool MC::metropolis(double kBT, double energy_difference){
@@ -542,50 +601,11 @@ double MC::run_gradient_descent(int max_iter, double step_size, double decrement
         else if (dot_product<0)
             step_size *= 1-decrement;
     }
-    double E_min_tmp = get_energy();
-    if(E_min>E_min_tmp)
-        E_min = E_min_tmp;
     return residual_max;
 }
 
-void MC::run_debug(){
-    vector<double> m_tmp(3);
-    double E = get_energy();
-    for(int i=0; i<n_tot; i++)
-    {
-        for(int j=0; j<3; j++)
-            m_tmp.at(j) = atom[i].m[j];
-        if(abs(atom[i].E(0, true)-atom[i].E())>1.0e-8)
-            throw invalid_argument(
-                "force compute not working: "
-                +to_string(atom[i].E(0, true))+" "+to_string(atom[i].E()));
-        double E_before = get_energy();
-        vector<double> dEE_tot = run_mc(0);
-        if(abs(get_energy()-E_before-atom[i].dE())>1.0e-8)
-            throw invalid_argument(
-                "energy difference wrong: "
-                +to_string(atom[i].E()-E_before)+" "+to_string(atom[i].dE()));
-        atom[i].revoke();
-        for(int j=0; j<3; j++)
-            if(abs(atom[i].m[j]-m_tmp.at(j))>1.0e-8)
-                throw invalid_argument("revoke not worked properly for magnetic moments");
-    }
-    if(abs(E-get_energy())>1.0e-8)
-        throw invalid_argument("revoke not worked properly for total energy");
-    for(int i=0; i<n_tot; i++)
-        atom[i].check_consistency();
-    reset();
-    run(1000, 100);
-    for(int i_atom=0; i_atom<n_tot; i_atom++)
-        for(int ix=0; ix<3; ix++)
-            magnetization[ix] -= atom[i_atom].m[ix]/n_tot;
-    if (abs(magnetization).sum()>1.0e-6)
-        throw invalid_argument("Magnetization wrong: "+to_string(abs(magnetization).sum()));
-    reset();
-}
-
-void MC::run(double T_in, int number_of_iterations){
-    double kBT = kB*T_in;
+void MC::run(double T_in, int number_of_iterations, int threads){
+    double kBT = constants.kB*T_in;
     vector<double> dEE_tot;
     auto begin = std::chrono::high_resolution_clock::now();
     for (int i=0; i<2; i++)
@@ -596,13 +616,13 @@ void MC::run(double T_in, int number_of_iterations){
     }
     for(int iter=0; iter<number_of_iterations; iter++)
     {
-        dEE_tot = run_mc(kBT);
+        if (spin_dynamics_flag)
+            run_spin_dynamics(kBT, threads);
+        else
+            run_mc(kBT);
         magnetization_hist.push_back(m_norm(magnetization));
         if (meta.initialized)
             meta.append_value(magnetization_hist.back());
-        E_tot.add(dEE_tot[0]);
-        if(thermodynamic_integration())
-            E_tot.add(dEE_tot[1], false, 1);
     }
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - begin);
@@ -674,6 +694,23 @@ void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<int> flip)
         atom[i].set_magnitude(dm[i], dphi[i], (flip[i]>0));
 }
 
+void MC::switch_spin_dynamics(bool on, double damping_parameter, double delta_t, bool rescale_mag)
+{
+    if (spin_dynamics_flag != on && rescale_mag){
+        for (int i=0; i<n_tot && on; i++)
+            atom[i].rescale_magnitude(1*(damping_parameter>0), 1);
+        for (int i=0; i<n_tot && !on; i++)
+            atom[i].rescale_magnitude(0.1*(damping_parameter>0), 0.1);
+    }
+    spin_dynamics_flag = on;
+    if (damping_parameter < 0)
+        throw invalid_argument("damping_parameter must be a positive float");
+    constants.damping_parameter = damping_parameter;
+    if (delta_t<=0)
+        throw invalid_argument("delta_t must be a positive float");
+    constants.delta_t = delta_t;
+}
+
 void MC::set_metadynamics(double aa, double bb, double cc, int dd, double ee, int ff)
 {
     meta.set_metadynamics(aa, bb, cc, dd, ee ,ff);
@@ -707,7 +744,6 @@ void MC::reset()
 void MC::reset_magnetization()
 {
     magnetization.resize(3);
-    magnetization = 0*magnetization;
     for(int i_atom=0; i_atom<n_tot; i_atom++)
         magnetization += atom[i_atom].m;
     magnetization /= n_tot;
@@ -747,6 +783,17 @@ void Metadynamics::set_metadynamics(
     use_derivative = false;
     if (derivative != 0)
         use_derivative = true;
+}
+
+double Metadynamics::get_biased_gradient(double m){
+    if (!initialized)
+        throw invalid_argument("metadynamics not initialized yet");
+    if (!use_derivative)
+        throw invalid_argument("use_derivative not chosen");
+    double mass = max_range/hist.size();
+    if (m>=max_range)
+        return 0;
+    return hist.at(int(m*0.5/mass));
 }
 
 double Metadynamics::get_biased_energy(double m_new, double m_tmp){
