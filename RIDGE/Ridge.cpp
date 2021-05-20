@@ -332,10 +332,7 @@ void Ridge::gradient_descent(int max_cycle, double prefactor, double max_descent
     {
         dchi_dlambda = dchi();
         for(int i_lambda=0; max_descent>0 && i_lambda<lambda.size(); i_lambda++)
-        {
-            dchi_dlambda[i_lambda] = exp(dchi_dlambda[i_lambda]/max_descent);
-            dchi_dlambda[i_lambda] = max_descent*(dchi_dlambda[i_lambda]-1)/(dchi_dlambda[i_lambda]+1);
-        }
+            dchi_dlambda[i_lambda] = max_descent/(1+exp(4*dchi_dlambda[i_lambda]/max_descent));
         lambda -= prefactor*dchi_dlambda;
         chi_training();
         if(lambda.maxCoeff()>lambda_tol || lambda.minCoeff()<-lambda_tol)

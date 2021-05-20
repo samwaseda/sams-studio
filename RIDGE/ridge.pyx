@@ -55,7 +55,7 @@ cdef class Ridge:
     def get_lambda(self):
         return np.array(self.c_ridge.get_lambda())
 
-    def activate_dbug(self):
+    def activate_debug(self):
         self.c_ridge.activate_debug()
 
     def get_validation_error(self):
