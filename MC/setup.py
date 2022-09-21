@@ -25,6 +25,7 @@ setup(
     author_email='waseda@mpie.de',
     license='BSD',
     #cmdclass = {'build_ext': my_build_ext}, ext_modules=cythonize("mc.pyx", language_level="3")
-    cmdclass = {'build_ext': my_build_ext}, ext_modules=cythonize([ext])
+    cmdclass = {'build_ext': my_build_ext}, ext_modules=cythonize([ext]),
+    install_requires=['numpy']
 )
 #setup(ext_modules=cythonize("mc.pyx", language_level="3"))
