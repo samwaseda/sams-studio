@@ -1,11 +1,11 @@
 from libcpp.vector cimport vector
 
-cdef extern from "MC.cpp":
+cdef extern from "cMC.cpp":
     pass
 
-cdef extern from "MC.h":
-    cdef cppclass MC:
-        MC() except +
+cdef extern from "cMC.h":
+    cdef cppclass cMC:
+        cMC() except +
         void create_atoms(int) except +
         void set_landau_coeff(vector[double], int, int) except +
         void set_heisenberg_coeff(vector[double], vector[int], vector[int], int, int) except +

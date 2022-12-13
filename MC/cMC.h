@@ -1,5 +1,5 @@
-#ifndef MC_H
-#define MC_H
+#ifndef cMC_H
+#define cMC_H
 
 #include <cstdlib>
 #include <ctime>
@@ -110,7 +110,7 @@ class Metadynamics{
         vector<double> get_histogram(vector<double>&, int);
 };
 
-class MC{
+class cMC{
     private:
         long long int acc, MC_count;
         int n_tot;
@@ -129,8 +129,8 @@ class MC{
         void reset_magnetization();
         void update_magnetization(int, bool backward=false);
     public:
-        MC();
-        ~MC();
+        cMC();
+        ~cMC();
         void create_atoms(int);
         void activate_debug();
         void run(double, int number_of_iterations=1, int threads=1);

@@ -1,4 +1,4 @@
-#include "MC.h"
+#include "cMC.h"
 
 double RandomNumberFactory::uniform(bool symmetric, double max_value){
     if (symmetric)
@@ -415,25 +415,25 @@ void average_energy::reset()
     NN = 0;
 }
 
-MC::MC(): n_tot(0), lambda(-1), debug_mode(false), spin_dynamics_flag(false)
+cMC::cMC(): n_tot(0), lambda(-1), debug_mode(false), spin_dynamics_flag(false)
 {
     srand (time(NULL));
     reset();
 }
 
-void MC::set_lambda(double lambda_in)
+void cMC::set_lambda(double lambda_in)
 {
     if(lambda_in<0 || lambda_in>1)
         throw invalid_argument( "Lambda must be between 0 and 1" );
     lambda = lambda_in;
 }
 
-void MC::activate_debug()
+void cMC::activate_debug()
 {
     debug_mode = true;
 }
 
-void MC::set_landau_coeff(vector<double> coeff, int deg, int index)
+void cMC::set_landau_coeff(vector<double> coeff, int deg, int index)
 {
     if(int(coeff.size())!=n_tot)
         throw invalid_argument("Number of coefficients is not the same as the number of atoms");
@@ -441,7 +441,7 @@ void MC::set_landau_coeff(vector<double> coeff, int deg, int index)
         atom[i].set_landau_coeff(coeff[i], deg, index);
 }
 
-void MC::set_heisenberg_coeff(
+void cMC::set_heisenberg_coeff(
     vector<double> coeff, vector<int> me, vector<int> neigh, int deg, int index)
 {
     if(int(coeff.size())!=int(me.size()) || int(me.size())!=int(neigh.size()))
@@ -450,7 +450,7 @@ void MC::set_heisenberg_coeff(
         atom[me.at(i)].set_heisenberg_coeff(atom[neigh.at(i)], coeff.at(i), deg, index);
 }
 
-void MC::create_atoms(int number_of_atoms)
+void cMC::create_atoms(int number_of_atoms)
 {
 
     if(number_of_atoms<=0)
@@ -464,38 +464,38 @@ void MC::create_atoms(int number_of_atoms)
         selectable_id.at(i_atom) = i_atom;
 }
 
-void MC::select_id(vector<int> select_id_in)
+void cMC::select_id(vector<int> select_id_in)
 {
     if(int(select_id_in.size())>n_tot)
         throw invalid_argument("select_id longer than the number of atoms");
     selectable_id = select_id_in;
 }
 
-int MC::get_number_of_atoms(){
+int cMC::get_number_of_atoms(){
     if (n_tot==0)
         throw invalid_argument("Atoms not created yet");
     return n_tot;
 }
 
-void MC::clear_landau_coeff(int index)
+void cMC::clear_landau_coeff(int index)
 {
     for(int i=0; i<n_tot; i++)
         atom[i].clear_landau_coeff(index);
 }
 
-void MC::clear_heisenberg_coeff(int index)
+void cMC::clear_heisenberg_coeff(int index)
 {
     for(int i=0; i<n_tot; i++)
         atom[i].clear_heisenberg_coeff(index);
 }
 
-bool MC::thermodynamic_integration(){
+bool cMC::thermodynamic_integration(){
     if(lambda>=0)
         return true;
     return false;
 }
 
-void MC::run_spin_dynamics(double kBT, int threads){
+void cMC::run_spin_dynamics(double kBT, int threads){
     double mu_s = sqrt(2*constants.damping_parameter*constants.hbar*kBT/constants.delta_t);
     #pragma omp parallel num_threads(threads)
     {
@@ -513,7 +513,7 @@ void MC::run_spin_dynamics(double kBT, int threads){
     reset_magnetization();
 }
 
-void MC::run_mc(double kBT){
+void cMC::run_mc(double kBT){
     int id_rand;
     double EE_tot[2];
     vector<double> dEE_tot (2,0);
@@ -562,7 +562,7 @@ void MC::run_mc(double kBT){
         E_tot.add(dEE_tot[1], false, 1);
 }
 
-bool MC::metropolis(double kBT, double energy_difference){
+bool cMC::metropolis(double kBT, double energy_difference){
     if(energy_difference<=0)
         return true;
     else if(kBT==0)
@@ -572,14 +572,14 @@ bool MC::metropolis(double kBT, double energy_difference){
     return false;
 }
 
-double MC::get_energy(int index=0){
+double cMC::get_energy(int index=0){
     double EE=0;
     for(int i=0; i<n_tot; i++)
         EE += atom[i].E(index, true);
     return EE;
 }
 
-double MC::run_gradient_descent(int max_iter, double step_size, double decrement, double diff)
+double cMC::run_gradient_descent(int max_iter, double step_size, double decrement, double diff)
 {
     reset();
     double residual = 0, residual_max = 0, dot_product = 0;
@@ -604,7 +604,7 @@ double MC::run_gradient_descent(int max_iter, double step_size, double decrement
     return residual_max;
 }
 
-void MC::run(double T_in, int number_of_iterations, int threads){
+void cMC::run(double T_in, int number_of_iterations, int threads){
     double kBT = constants.kB*T_in;
     vector<double> dEE_tot;
     auto begin = std::chrono::high_resolution_clock::now();
@@ -629,11 +629,11 @@ void MC::run(double T_in, int number_of_iterations, int threads){
     steps_per_second = n_tot*number_of_iterations/double(duration.count())*1.0e6;
 }
 
-double MC::get_steps_per_second(){
+double cMC::get_steps_per_second(){
     return (double)steps_per_second;
 }
 
-vector<double> MC::get_magnetic_moments(){
+vector<double> cMC::get_magnetic_moments(){
     vector<double> m(n_tot*3);
     for(int i_atom=0; i_atom<n_tot; i_atom++)
         for(int ix=0; ix<3; ix++)
@@ -641,7 +641,7 @@ vector<double> MC::get_magnetic_moments(){
     return m;
 }
 
-vector<double> MC::get_magnetic_gradients(){
+vector<double> cMC::get_magnetic_gradients(){
     vector<double> m(n_tot*3);
     valarray<double> grad(3);
     for(int i_atom=0; i_atom<n_tot; i_atom++)
@@ -653,7 +653,7 @@ vector<double> MC::get_magnetic_gradients(){
     return m;
 }
 
-void MC::set_magnetic_moments(vector<double> m_in)
+void cMC::set_magnetic_moments(vector<double> m_in)
 {
     if(int(m_in.size())!=3*n_tot)
         throw invalid_argument("Length of magnetic moments not correct");
@@ -665,28 +665,28 @@ void MC::set_magnetic_moments(vector<double> m_in)
     reset();
 }
 
-double MC::get_mean_energy(int index){
+double cMC::get_mean_energy(int index){
     return E_tot.E_mean(index);
 }
 
-double MC::get_energy_variance(int index){
+double cMC::get_energy_variance(int index){
     return E_tot.E_var(index);
 }
 
-double MC::get_acceptance_ratio(){
+double cMC::get_acceptance_ratio(){
     if(MC_count==0)
         return 0;
     return acc/(double)MC_count;
 } 
 
-vector<double> MC::get_acceptance_ratios(){
+vector<double> cMC::get_acceptance_ratios(){
     vector<double> v(n_tot);
     for(int i=0; i<n_tot; i++)
         v.at(i) = atom[i].get_acceptance_ratio();
     return v;
 }
 
-void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<int> flip)
+void cMC::set_magnitude(vector<double> dm, vector<double> dphi, vector<int> flip)
 {
     if(int(dm.size())!=int(dphi.size()) || n_tot!=int(dm.size()))
         throw invalid_argument("Length of vectors not consistent");
@@ -694,7 +694,7 @@ void MC::set_magnitude(vector<double> dm, vector<double> dphi, vector<int> flip)
         atom[i].set_magnitude(dm[i], dphi[i], (flip[i]>0));
 }
 
-void MC::switch_spin_dynamics(bool on, double damping_parameter, double delta_t, bool rescale_mag)
+void cMC::switch_spin_dynamics(bool on, double damping_parameter, double delta_t, bool rescale_mag)
 {
     if (spin_dynamics_flag != on && rescale_mag){
         for (int i=0; i<n_tot && on; i++)
@@ -711,12 +711,12 @@ void MC::switch_spin_dynamics(bool on, double damping_parameter, double delta_t,
     constants.delta_t = delta_t;
 }
 
-void MC::set_metadynamics(double aa, double bb, double cc, int dd, double ee, int ff)
+void cMC::set_metadynamics(double aa, double bb, double cc, int dd, double ee, int ff)
 {
     meta.set_metadynamics(aa, bb, cc, dd, ee ,ff);
 }
 
-void MC::update_magnetization(int mc_id, bool backward)
+void cMC::update_magnetization(int mc_id, bool backward)
 {
     if (backward)
         magnetization -= atom[mc_id].delta_m()/n_tot;
@@ -724,15 +724,15 @@ void MC::update_magnetization(int mc_id, bool backward)
         magnetization += atom[mc_id].delta_m()/n_tot;
 }
 
-vector<double> MC::get_magnetization(){
+vector<double> cMC::get_magnetization(){
     return magnetization_hist;
 }
 
-vector<double> MC::get_histogram(int derivative){
+vector<double> cMC::get_histogram(int derivative){
     return meta.get_histogram(magnetization_hist, derivative);
 }
 
-void MC::reset()
+void cMC::reset()
 {
     acc = 0;
     MC_count = 0;
@@ -741,7 +741,7 @@ void MC::reset()
     magnetization_hist.clear();
 }
 
-void MC::reset_magnetization()
+void cMC::reset_magnetization()
 {
     magnetization.resize(3);
     for(int i_atom=0; i_atom<n_tot; i_atom++)
@@ -749,7 +749,7 @@ void MC::reset_magnetization()
     magnetization /= n_tot;
 }
 
-MC::~MC()
+cMC::~cMC()
 {
     delete [] atom;
 }
