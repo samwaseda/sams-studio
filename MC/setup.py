@@ -14,7 +14,7 @@ class my_build_ext(build_ext):
             pass
         build_ext.build_extensions(self)
 
-ext = Extension('mc', sources=["mc.pyx"], language="c++", language_level="3", extra_compile_args=['-fopenmp'], extra_link_args=['-lgomp'])
+ext = Extension('mc', sources=["mc.pyx"], language="c++", extra_compile_args=['-fopenmp'], extra_link_args=['-lgomp'])
 
 setup(
     name='mamonca',
@@ -25,6 +25,6 @@ setup(
     author_email='waseda@mpie.de',
     license='BSD',
     #cmdclass = {'build_ext': my_build_ext}, ext_modules=cythonize("mc.pyx", language_level="3")
-    cmdclass = {'build_ext': my_build_ext}, ext_modules=cythonize([ext])
+    cmdclass = {'build_ext': my_build_ext}, ext_modules=cythonize([ext], language_level="3")
 )
 #setup(ext_modules=cythonize("mc.pyx", language_level="3"))

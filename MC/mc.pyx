@@ -1,6 +1,6 @@
 # distutils: language = c++
 
-from MC cimport MC as MCcpp
+from cMC cimport cMC as MCcpp
 from libcpp.vector cimport vector
 import numpy as np
 
