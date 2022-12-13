@@ -58,11 +58,11 @@ double Octic::value(double xxx){ return quartic.value(xxx)*quartic.value(xxx); }
 double Decic::value(double xxx){ return sextic.value(xxx)*quartic.value(xxx); }
 
 valarray<double> Magnitude::gradient(valarray<double> &m){
-    return 0*m;
+    return 0.*m;
 }
 
 valarray<double> Square::gradient(valarray<double> &m){
-    return 2*m;
+    return 2.*m;
 }
 
 valarray<double> Quartic::gradient(valarray<double> &m){
@@ -90,7 +90,7 @@ double Product::diff(Atom &neigh, Atom &me){
 }
 
 valarray<double> Product::gradient(Atom &neigh, Atom &me){
-    return 0*neigh.m;
+    return 0.*neigh.m;
 }
 
 double J_lin_lin::value(Atom &neigh, Atom &me){
@@ -130,7 +130,7 @@ double J_qui_lin::diff(Atom &neigh, Atom &me){
 }
 
 valarray<double> J_qui_lin::gradient(Atom &neigh, Atom &me){
-    return (2*me.m*me.get_magnitude(2)*(me.m*neigh.m).sum()
+    return (2.*me.m*me.get_magnitude(2)*(me.m*neigh.m).sum()
             +0.5*neigh.m*(me.get_magnitude(4)+neigh.get_magnitude(4)));
 }
 
@@ -527,7 +527,7 @@ void cMC::run_mc(double kBT){
         double dEE = atom[id_rand].dE();
         if (meta.initialized)
             dEE += meta.get_biased_energy(
-                m_norm(magnetization+atom[id_rand].delta_m()/n_tot),
+                m_norm(magnetization+atom[id_rand].delta_m()/(double)n_tot),
                 sqrt((magnetization*magnetization).sum()));
         update_magnetization(id_rand);
         if(thermodynamic_integration())
@@ -719,9 +719,9 @@ void cMC::set_metadynamics(double aa, double bb, double cc, int dd, double ee, i
 void cMC::update_magnetization(int mc_id, bool backward)
 {
     if (backward)
-        magnetization -= atom[mc_id].delta_m()/n_tot;
+        magnetization -= atom[mc_id].delta_m()/(double)n_tot;
     else
-        magnetization += atom[mc_id].delta_m()/n_tot;
+        magnetization += atom[mc_id].delta_m()/(double)n_tot;
 }
 
 vector<double> cMC::get_magnetization(){
