@@ -8,6 +8,7 @@
 #include <numeric>
 #include <random>
 #include <omp.h>
+#include <string>
 
 using namespace std;
 
