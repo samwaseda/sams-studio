@@ -20,7 +20,7 @@ setup(
     name='mamonca',
     version='0.0.1',
     description='mamonca - an integrated development environment (IDE) for computational materials science.',
-    url='https://github.com/samwaseda/sams-studio/tree/master/MC',
+    url='https://github.com/samwaseda/mamonca',
     author='Max-Planck-Institut für Eisenforschung GmbH - Computational Materials Design (CM) Department',
     author_email='waseda@mpie.de',
     license='BSD',
